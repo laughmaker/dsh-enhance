@@ -12,7 +12,11 @@
  * owns the gesture. One writer, one width, no fighting.
  *
  * Three places paint the same number and all three are written here: the shell's
- * grid track, the sidebar content's inline width, and the handle's `left`.
+ * grid track, the sidebar content's inline width, and the handle's `left`. Only
+ * elements that actually mirror the column width are rewritten — an element
+ * carrying some other fixed px width (a row's timestamp column, an icon box)
+ * must not be stamped with the sidebar width, or the row's inner layout breaks
+ * into a dead strip.
  */
 
 /** This plugin's floor: 50px below the app's own 264px minimum. */
@@ -54,16 +58,31 @@ export function installSidebarFloor(root: Document): () => void {
     return match === null ? 0 : Number(match[1])
   }
 
-  /** Every element inside the column that carries a px inline width. */
-  const widthCarriers = (): HTMLElement[] => {
+  /**
+   * Elements inside the column that mirror the sidebar width.
+   *
+   * Only a child whose inline width equals the width the app just painted on
+   * the track (or the width this module last painted) counts as a mirror.
+   * Foreign fixed widths — a co-installed plugin's panel, an icon box — must
+   * never be stamped, or their internal layout breaks into a dead strip.
+   * @param mirrors - widths to accept as "the column's own value".
+   * @returns the mirror elements, in document order.
+   */
+  const widthCarriers = (mirrors: readonly number[]): HTMLElement[] => {
     const column = frame?.firstElementChild
     if (column === null || column === undefined) return []
     const carriers: HTMLElement[] = []
+    const qualifies = (element: HTMLElement): boolean => {
+      const match = /^(\d+(?:\.\d+)?)px$/.exec(element.style.width)
+      if (match === null) return false
+      const width = Number(match[1])
+      return mirrors.some((mirror) => Math.abs(width - mirror) <= 1)
+    }
     const visit = (element: Element, depth: number): void => {
       if (depth > 3) return
       for (const child of element.children) {
         if (!(child instanceof HTMLElement)) continue
-        if (/^\d+(?:\.\d+)?px$/.test(child.style.width)) carriers.push(child)
+        if (qualifies(child)) carriers.push(child)
         visit(child, depth + 1)
       }
     }
@@ -78,9 +97,18 @@ export function installSidebarFloor(root: Document): () => void {
     applying = true
     try {
       const rounded = Math.round(width)
+      // Accept as mirrors both the width the app just painted on the track and
+      // the held one: an element React re-rendered to the app's value needs
+      // restamping, and one already at the held value survives a no-op pass.
+      const mirrors = [painted(), rounded]
       target.style.gridTemplateColumns = target.style.gridTemplateColumns
         .replace(/^\s*\d+(?:\.\d+)?px/, `${rounded}px`)
-      for (const carrier of widthCarriers()) {
+      const carriers = new Set(widthCarriers(mirrors))
+      // An element this module already owns stays owned: React may repaint it
+      // to a value that matches neither the track nor the held width, and
+      // leaving one stale mirror behind splits the column from its content.
+      for (const element of restored.keys()) if (element.isConnected) carriers.add(element)
+      for (const carrier of carriers) {
         if (!restored.has(carrier)) restored.set(carrier, carrier.style.width)
         carrier.style.width = `${rounded}px`
       }
@@ -102,16 +130,29 @@ export function installSidebarFloor(root: Document): () => void {
   /**
    * Keep the plugin's width while the app still reports its own floor.
    *
-   * The app repaints the grid whenever unrelated layout state changes. Re-applying
-   * only when the painted value differs from the held one keeps that cheap and
-   * keeps the sidebar where the reader put it.
+   * The app repaints the grid whenever unrelated layout state changes, and it
+   * re-renders the content element's width (React re-mounts it on right-panel
+   * transitions) without touching the grid string at all. Watching both: a
+   * drifted track is re-held (or adopted on a collapse), and a drifted mirror
+   * is re-stamped even when the track still reads the held width — the one
+   * content-only repaint is exactly what used to leave a dead strip.
    */
   const reconcile = (): void => {
     if (applying) return
     frame ??= findFrame()
     if (frame === null) return
     if (held === undefined) return
-    if (Math.abs(painted() - held) > 0.5) { adoptAppWidth(); if (held === undefined) return; apply(held) }
+    for (const element of [...restored.keys()]) if (!element.isConnected) restored.delete(element)
+    const drifted = restored.size === 0
+      ? false
+      : [...restored.keys()].some((element) => element.style.width !== `${Math.round(held!)}px`)
+    if (Math.abs(painted() - held) > 0.5) {
+      adoptAppWidth()
+      if (held === undefined) return
+      apply(held)
+      return
+    }
+    if (drifted) apply(held)
   }
 
   const frameObserver = new MutationObserver(() => { reconcile() })
@@ -124,6 +165,17 @@ export function installSidebarFloor(root: Document): () => void {
     frame = target
     frame.setAttribute(FRAME_ATTRIBUTE, '')
     frameObserver.observe(frame, { attributes: true, attributeFilter: ['style'] })
+    // The sidebar root is a direct child of the column; a re-mount there is a
+    // childList change, and React rewriting its inline width is a style
+    // attribute change. Either repaints the content without touching the grid
+    // string — the drift that used to leave a dead strip beside the rows.
+    const column = frame.firstElementChild
+    if (column !== null) frameObserver.observe(column, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style'],
+    })
     if (held !== undefined) apply(held)
   }
 

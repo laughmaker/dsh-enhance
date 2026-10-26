@@ -13,6 +13,7 @@ DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、�
   - 发送消息时自动拼进消息，输入框保持干净
 - **侧栏提问** — 从同一面板把段落送到右侧栏的侧边对话，不打断当前对话。首次创建，之后复用同一标签页。
 - **侧栏更窄** — 侧栏可拖到 214px（上游限制 264px），文字相应缩小一档。
+- **Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏「绿点未读会话」的数量：某会话跑完而你没在看它（切到别的会话或别的 App）就 +1，点开读一下即 -1，全部读完角标消失。直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源），走标准 Badging API（`navigator.setAppBadge`），宿主不支持时静默降级。
 
 ## 安装
 
@@ -96,6 +97,7 @@ npx pnpm@11.28.5 remove dsh-enhance
 | `src/client/annotations.ts` | 批注存储（会话维度） |
 | `src/client/anchors.ts` | 在转录区重新定位段落、绘制高亮与图钉 |
 | `src/client/sidebar-floor.ts` | 侧栏拖拽下限（264 → 214） |
+| `src/client/turn-badge.ts` | Dock 未读会话角标（映射宿主 completionUnread） |
 | `src/client/side-chat.ts` | 侧栏对话资源与标签页 |
 | `src/client/styles/` | 各样式表（每个文件导出一个 `String.raw` 模板） |
 | `lib/` | 构建产物，即 `npm pack` 打包内容 |

@@ -19,6 +19,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller'
 import { installStyles } from './styles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
+import { installTurnBadge } from './turn-badge.ts'
 import { LOCALE_NS, en, zh } from './locales.ts'
 
 /** The one side conversation this page opens; later requests add to it. */
@@ -34,8 +35,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Required services: slots, dictionaries, session creation, and the right Sidebar. */
-export const inject = ['slots', 'locale', 'sessions', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs']
+/** Required services: slots, dictionaries, session status, the Workspace list, and the right Sidebar. */
+export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs']
 
 /**
  * Mount the plugin.
@@ -48,6 +49,9 @@ export function apply(ctx: Context): void {
   // The sidebar's minimum width is a module constant in the layout package, so the
   // drag gesture is taken over to allow 50px below it.
   ctx.effect(() => installSidebarFloor(document), 'dsh-enhance: sidebar floor')
+  // Finished-while-away conversations mark the Dock tile through the standard
+  // Badging API; the module no-ops where the webview does not implement it.
+  ctx.effect(() => installTurnBadge(ctx), 'dsh-enhance: turn badge')
   registerSideChat(ctx, t)
 
   /**
