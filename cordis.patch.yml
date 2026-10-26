@@ -1,0 +1,8 @@
+# dsh-enhance bundle patch
+#
+# The single row this bundle contributes. A profile that lists `dsh-enhance`
+# under `dsh.profile.bundles` mounts that row, and the host's client module
+# system then serves the browser half from the package's `./client` export.
+- insert:
+    - id: dsh-enhance
+      name: 'dsh-enhance'

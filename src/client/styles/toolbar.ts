@@ -1,0 +1,812 @@
+/** Global presentation owned by dsh-enhance: annotation popover and tray. */
+export const css = String.raw`/* The passage being annotated, painted through the Custom Highlight API so the
+   mark survives focus moving into the note field (a native selection would not).
+   Same blue as the app's document selection, so it reads as the same gesture. */
+::highlight(dsh-enhance-annotation) {
+  background-color: var(--dsw-alias-bg-document-selection);
+  color: inherit;
+}
+
+/* Passages that carry an annotation keep a persistent mark so the transcript
+   shows what the next message will quote. It uses literal colours rather than
+   a mix over theme tokens: a highlight pseudo-element does not inherit the
+   custom properties of the element it paints, so a mixed colour resolved to
+   nothing and the mark was invisible. Decoration properties are not honoured
+   inside ::highlight either, so the mark is a plain wash. */
+::highlight(dsh-enhance-annotation-mark) {
+  /* Strong enough to spot while reading: the point of the mark is that the
+     reader notices "this passage is annotated" without hovering anything. */
+  background-color: rgb(247 173 49 / 46%);
+  color: inherit;
+}
+
+body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
+  background-color: rgb(247 173 49 / 34%);
+  color: inherit;
+}
+
+/* The inline badge sitting right after a marked passage.
+   Only the glyph is painted — no chip fill, no halo — and it rides just above the
+   line it marks, so the passage reads as marked rather than as a control. */
+.dsh-enhance-badge {
+  /* Full reset: a bare button element still paints the platform's focus ring and
+     background once it is clicked, which showed up as a box behind the pin. */
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin: 0 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: rgb(247 173 49);
+  line-height: 1;
+  vertical-align: 8px;
+  cursor: pointer;
+  /* The glyph floats over the passage: a soft cast shadow puts it in front of the
+     text instead of sitting flat in the line. */
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 42%));
+  transition: transform 110ms ease, filter 110ms ease;
+}
+
+.dsh-enhance-badge svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.dsh-enhance-badge:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 52%));
+}
+
+.dsh-enhance-badge:focus,
+.dsh-enhance-badge:focus-visible,
+.dsh-enhance-badge:active {
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+/* Annotation popover.
+   One frame, two rows: the field the reader types into, then a quiet line that
+   carries the quoted passage and the secondary action. No second border, no key
+   legend, no nested boxes — the surface is a single floating panel. */
+.dsh-enhance-popover {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border-radius: 18px;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 76%, transparent);
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 40%);
+  backdrop-filter: blur(24px) saturate(1.6);
+  animation: dsh-enhance-pop-in 110ms cubic-bezier(.2, .8, .3, 1);
+}
+
+body[data-ds-dark-theme] .dsh-enhance-popover {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 70%, transparent);
+  box-shadow: 0 20px 48px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
+}
+
+@keyframes dsh-enhance-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsh-enhance-popover { animation: none; }
+}
+
+/* The field owns the whole top row; the confirm affordance sits inside it. */
+.dsh-enhance-popover__field {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+}
+
+.dsh-enhance-popover__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 24px;
+  max-height: 96px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  resize: none;
+}
+
+.dsh-enhance-popover__input::placeholder {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+}
+
+.dsh-enhance-popover__input:focus {
+  outline: none;
+}
+
+.dsh-enhance-popover__confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-l1, #111);
+  cursor: pointer;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.dsh-enhance-popover__confirm:disabled {
+  opacity: .22;
+  cursor: default;
+}
+
+.dsh-enhance-popover__confirm:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.dsh-enhance-popover__confirm svg,
+.dsh-enhance-popover__confirm svg path {
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Footer: the quoted passage on the left, the side-chat action on the right. */
+.dsh-enhance-popover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px 2px 12px;
+}
+
+.dsh-enhance-popover__quote {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsh-enhance-popover__link {
+  flex: none;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 15px;
+  cursor: pointer;
+}
+
+.dsh-enhance-popover__link:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-popover__link:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+/* Annotation tray inside the composer card.
+   The overlay anchor is a zero-height box on the card's top edge, so the tray
+   is absolutely positioned against it: the pill sits just above that edge and
+   the expanded list grows upward over the transcript. Nothing here takes layout
+   space from the input, which is what keeps the composer looking untouched. */
+/* The pill sits inside the card's frame, on its top inset. The rule below gives
+   the card the room it needs, so the draft starts under the pill instead of
+   behind it — the input frame never grows an extra row of chrome. */
+.dsh-enhance-tray {
+  position: absolute;
+  left: 14px;
+  top: 7px;
+  max-width: calc(100% - 28px);
+  z-index: 3;
+}
+
+[data-composer-card]:has(.dsh-enhance-tray) {
+  padding-top: 40px !important;
+}
+
+.dsh-enhance-tray__pill {
+  display: inline-flex;
+  align-items: center;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  overflow: hidden;
+}
+
+body[data-ds-dark-theme] .dsh-enhance-tray__pill {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 94%, #fff 6%);
+}
+
+.dsh-enhance-tray__divider {
+  width: 1px;
+  height: 14px;
+  background: var(--dsw-alias-border-l3);
+}
+
+/* Clears every annotation at once; sized like the pill's own chrome. */
+.dsh-enhance-tray__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 3px 0 1px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  cursor: pointer;
+}
+
+.dsh-enhance-tray__clear:hover {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-tray__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.dsh-enhance-tray__chip:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-tray__glyph {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The list is portalled to <body> and fixed against the pill: the composer card
+   and the right Sidebar both clip overflow, which hid it entirely in a sidebar
+   tab. z-index keeps it above the composer and its own overlay anchor. */
+.dsh-enhance-tray__list {
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 260px;
+  max-width: min(380px, calc(100vw - 16px));
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 38%);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+body[data-ds-dark-theme] .dsh-enhance-tray__list {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 82%, transparent);
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 58%);
+}
+
+/* One row: the passage opens the reveal, the trailing icons edit and remove. */
+/* The row is the whole width; its actions float over the right end on hover, so
+   the text keeps the full line until the reader actually points at it. */
+.dsh-enhance-tray__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+}
+
+.dsh-enhance-tray__item:hover {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+}
+
+.dsh-enhance-tray__row {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  /* Full width: the text runs to the row's right edge and is never shortened to
+     make room for the hover actions, which overlay it instead. */
+  padding: 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dsh-enhance-tray__row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-tray__index {
+  flex: none;
+  width: 14px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 10.5px;
+  line-height: 18px;
+  text-align: right;
+}
+
+.dsh-enhance-tray__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.dsh-enhance-tray__note {
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+
+.dsh-enhance-tray__actions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  /* A solid pill, not a gradient: fading over text looked like a smudge, and the
+     icons must stay readable on top of the note they cover. */
+  background: var(--dsw-alias-bg-elevated, #1b1b1c);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent),
+    0 2px 8px rgb(0 0 0 / 22%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 110ms ease;
+}
+
+body[data-ds-dark-theme] .dsh-enhance-tray__actions {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 96%, #fff 4%);
+}
+
+.dsh-enhance-tray__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+/* Only the row under the pointer (or holding keyboard focus) reveals its
+   actions; every other row stays a plain reveal target. */
+.dsh-enhance-tray__item:hover > .dsh-enhance-tray__actions,
+.dsh-enhance-tray__item:focus-within > .dsh-enhance-tray__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dsh-enhance-tray__icon:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+}
+
+.dsh-enhance-tray__icon:hover {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-tray__passage {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Editing panel: a small floating card. The quoted passage is the header and the
+   drag handle, the field is the body, and a single check publishes the note. */
+.dsh-enhance-edit {
+  position: fixed;
+  z-index: 63;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  gap: 2px;
+  padding: 10px;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 94%, transparent);
+  backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: 0 18px 44px -14px rgb(0 0 0 / 46%);
+  animation: dsh-enhance-pop-in 100ms cubic-bezier(.2, .8, .3, 1);
+}
+
+body[data-ds-dark-theme] .dsh-enhance-edit {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 94%, transparent);
+  box-shadow: 0 20px 48px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
+}
+
+/* Anchored variant: coordinates come from the badge, so the centring transform
+   must not apply. */
+.dsh-enhance-edit--anchored {
+  transform: none;
+}
+
+/* The header is text, not a bar: it names the passage and doubles as the drag
+   surface, so no grip row is spent on it. */
+.dsh-enhance-edit__head {
+  min-width: 0;
+  padding: 2px 4px 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dsh-enhance-edit__head:active {
+  cursor: grabbing;
+}
+
+.dsh-enhance-edit__label {
+  display: block;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The field and its one action share a row: the check sits at the end of the text
+   it publishes rather than in a footer of its own. */
+.dsh-enhance-edit__body {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.dsh-enhance-edit__field {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  min-height: 66px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  resize: none;
+}
+
+.dsh-enhance-edit__field:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+}
+
+.dsh-enhance-edit__confirm {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  cursor: pointer;
+  transition: opacity 110ms ease, transform 110ms ease;
+}
+
+.dsh-enhance-edit__confirm:hover {
+  transform: scale(1.06);
+}
+
+.dsh-enhance-edit__confirm:focus-visible {
+  outline: 2px solid var(--dsw-alias-label-primary);
+  outline-offset: 2px;
+}
+
+.dsh-enhance-tray__passage {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Editing panel: a small floating card, not a modal. The header is the drag
+   handle, the field is the only body, and the actions sit in one compact row. */
+.dsh-enhance-edit {
+  position: fixed;
+  z-index: 63;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  padding: 8px;
+  gap: 6px;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 92%, transparent);
+  backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: 0 20px 48px -14px rgb(0 0 0 / 48%);
+  animation: dsh-enhance-pop-in 100ms cubic-bezier(.2, .8, .3, 1);
+}
+
+body[data-ds-dark-theme] .dsh-enhance-edit {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 92%, transparent);
+  box-shadow: 0 22px 52px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
+}
+
+/* Anchored variant: coordinates come from the badge, so the centring transform
+   must not apply. */
+.dsh-enhance-edit--anchored {
+  transform: none;
+}
+
+/* Header doubles as a drag handle. */
+.dsh-enhance-edit__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 2px 4px 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dsh-enhance-edit__head:active {
+  cursor: grabbing;
+}
+
+.dsh-enhance-edit__grip {
+  flex: none;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+}
+
+.dsh-enhance-edit__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsh-enhance-edit__field {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  resize: vertical;
+}
+
+.dsh-enhance-edit__field:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+}
+
+.dsh-enhance-edit__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 2px 2px;
+}
+
+.dsh-enhance-edit__ghost,
+.dsh-enhance-edit__primary {
+  padding: 6px 14px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.dsh-enhance-edit__ghost {
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-enhance-edit__ghost:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-edit__primary {
+  border: 0;
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  font-weight: 600;
+}
+
+.dsh-enhance-edit__primary:hover {
+  opacity: .88;
+}
+
+.dsh-enhance-tray__passage {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  font-size: 11px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Editing dialog opened from a transcript badge: it hangs under that badge
+   instead of jumping to the middle of the window, so the note the reader clicked
+   stays in view while they rewrite it. */
+.dsh-enhance-edit {
+  position: fixed;
+  z-index: 63;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 90%, transparent);
+  backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 52%);
+}
+
+body[data-ds-dark-theme] .dsh-enhance-edit {
+  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 88%, transparent);
+}
+
+/* Anchored variant: coordinates come from the badge, so the centring transform
+   must not apply. */
+.dsh-enhance-edit--anchored {
+  transform: none;
+  width: 360px;
+}
+
+.dsh-enhance-edit__field {
+  /* border-box: a full-width field plus its padding and hairline overflowed the
+     dialog by exactly those pixels. */
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  padding: 8px 10px;
+  max-width: 100%;
+  border: 0;
+  border-radius: 11px;
+  /* No second frame inside the dialog: the dialog itself is the surface, and a
+     nested border plus wash read as a stray box. The field only tints slightly
+     so the caret area is still distinguishable. */
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  resize: vertical;
+}
+
+.dsh-enhance-edit__field:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+}
+
+.dsh-enhance-edit__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dsh-enhance-edit__ghost,
+.dsh-enhance-edit__primary {
+  padding: 6px 14px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.dsh-enhance-edit__ghost {
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-enhance-edit__ghost:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-enhance-edit__primary {
+  border: 0;
+  /* The app's own inverted pair: a primary-label fill with its matching
+     foreground token. Picking a background token by name (bg-l1) read as "light"
+     but resolves to the page colour in dark mode, which made the label vanish. */
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  font-weight: 600;
+}
+
+.dsh-enhance-edit__primary:hover {
+  opacity: .88;
+}
+`
