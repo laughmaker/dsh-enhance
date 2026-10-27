@@ -7,7 +7,7 @@
  * annotation tray instead of writing into the draft, so several passages can be
  * marked while the message they belong to stays open.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { TOOLBAR_ATTRIBUTE, captureSelection, placeToolbar, type CapturedSelection } from './selection.ts'
@@ -176,8 +176,33 @@ export function SelectionToolbar({
       width: window.innerWidth,
       height: window.innerHeight,
     }))
-    input.current?.focus({ preventScroll: true })
   }, [captured])
+
+  // Focus the note field as soon as the popover exists.
+  //
+  // This waits for `placement`, not `captured`: the component returns null until
+  // both are set, so on the pass where a selection is captured the textarea has
+  // not been mounted yet and `input.current` is still null. Keying the effect on
+  // the rendered state is what actually lands the caret in the field, so the
+  // reader can type the note straight away instead of clicking first.
+  useEffect(() => {
+    if (placement === undefined) return
+    input.current?.focus({ preventScroll: true })
+  }, [placement])
+
+  // Grow the field with its text instead of scrolling it.
+  //
+  // The note is written while the passage stays readable behind the popover, so
+  // a scrollbar inside a 4-line box hides part of what was just typed. Height is
+  // measured from `scrollHeight` (which the CSS keeps unbounded) and written
+  // back as an inline height, reset to auto first so a deleted line shrinks it
+  // again rather than leaving the box tall.
+  useLayoutEffect(() => {
+    const field = input.current
+    if (field === null) return
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight}px`
+  }, [note, placement])
 
   const confirm = useCallback(() => {
     const current = latest.current

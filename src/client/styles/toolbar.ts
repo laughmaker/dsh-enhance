@@ -3,7 +3,16 @@ export const css = String.raw`/* The passage being annotated, painted through th
    mark survives focus moving into the note field (a native selection would not).
    Same blue as the app's document selection, so it reads as the same gesture. */
 ::highlight(dsh-enhance-annotation) {
-  background-color: var(--dsw-alias-bg-document-selection);
+  /* Literal, not a token: a highlight pseudo-element does not inherit custom
+     properties from the element it paints, so the document-selection token
+     resolved to nothing and clicking an annotation showed no
+     selection wash at all. Same blue the app uses for its own selection. */
+  background-color: rgb(59 130 246 / 32%);
+  color: inherit;
+}
+
+body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation) {
+  background-color: rgb(96 165 250 / 34%);
   color: inherit;
 }
 
@@ -36,9 +45,9 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  margin: 0 5px;
+  width: 26px;
+  height: 26px;
+  margin: 0 4px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -55,10 +64,12 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
   transition: transform 110ms ease, filter 110ms ease;
 }
 
+/* The badge is one numbered disc. Height drives the scale and the width follows
+   the viewBox, so a two-digit pill stays the same height as a single digit. */
 .dsh-enhance-badge svg {
   display: block;
-  width: 22px;
   height: 22px;
+  width: auto;
 }
 
 .dsh-enhance-badge:hover {
@@ -86,7 +97,10 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
   flex-direction: column;
   width: 340px;
   max-width: calc(100vw - 24px);
-  padding: 6px;
+  /* No inset of its own: the textarea sits on the frame's surface, flush with
+     the top and both sides. The only breathing room is the field's own
+     horizontal padding, so text never touches the rounded corners. */
+  padding: 0;
   border-radius: 18px;
   border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
   background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 76%, transparent);
@@ -109,22 +123,28 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
   .dsh-enhance-popover { animation: none; }
 }
 
-/* The field owns the whole top row; the confirm affordance sits inside it. */
+/* The field row carries no inset and no panel of its own: the textarea sits
+   flush with the popover's own surface, so the words line up with the frame
+   instead of floating in a lighter box inside it. */
 .dsh-enhance-popover__field {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  padding: 6px 6px 6px 12px;
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+  padding: 10px 8px 6px 14px;
+  border-radius: 0;
+  background: transparent;
 }
 
+/* Height follows the text. The element is a textarea because the note is
+   multi-line, but it must never grow a scrollbar: no max-height, no vertical
+   overflow, and the rows are driven from JS on every input (see the seat), so
+   the panel grows with what is typed rather than clipping it. */
 .dsh-enhance-popover__input {
   flex: 1;
   min-width: 0;
   min-height: 24px;
-  max-height: 96px;
-  padding: 3px 0;
+  max-height: none;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--dsw-alias-label-primary);
@@ -132,6 +152,7 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
   font-size: 13px;
   line-height: 20px;
   resize: none;
+  overflow-y: hidden;
 }
 
 .dsh-enhance-popover__input::placeholder {
@@ -173,12 +194,14 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
 }
 
 /* Footer: the quoted passage on the left, the side-chat action on the right. */
+/* The popover frame has no inset of its own (the field is flush with it), so
+   the footer carries the frame's own horizontal and bottom spacing. */
 .dsh-enhance-popover__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 8px 2px 12px;
+  padding: 6px 14px 10px;
 }
 
 .dsh-enhance-popover__quote {
@@ -393,8 +416,9 @@ body[data-ds-dark-theme] .dsh-enhance-tray__list {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
-  border-radius: 10px;
+  padding: 3px;
+  /* Capsule, matching the shape language of the rest of the composer chrome. */
+  border-radius: 999px;
   /* A solid pill, not a gradient: fading over text looked like a smudge, and the
      icons must stay readable on top of the note they cover. */
   background: var(--dsw-alias-bg-elevated, #1b1b1c);
@@ -414,10 +438,10 @@ body[data-ds-dark-theme] .dsh-enhance-tray__actions {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
@@ -486,8 +510,12 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
 /* The header is text, not a bar: it names the passage and doubles as the drag
    surface, so no grip row is spent on it. */
 .dsh-enhance-edit__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  padding: 2px 4px 6px;
+  /* Carries the dialog's own top inset now that the frame has no padding. */
+  padding: 10px 14px 6px;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -499,6 +527,8 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
 
 .dsh-enhance-edit__label {
   display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
   font-size: 11px;
@@ -507,12 +537,47 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   white-space: nowrap;
 }
 
+/* Removal action on the editor header. Quiet by default — it sits beside the
+   quoted passage, which is the header's real job — and takes the danger colour
+   only on hover, so it never competes with the confirm check. */
+.dsh-enhance-edit__delete {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  cursor: pointer;
+  opacity: 0.7;
+  transition: background-color 110ms ease, color 110ms ease, opacity 110ms ease;
+}
+
+.dsh-enhance-edit__delete:hover {
+  opacity: 1;
+  color: #e5484d;
+  background: rgb(229 72 77 / 12%);
+}
+
+.dsh-enhance-edit__delete:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #4d6bfe);
+  outline-offset: 1px;
+}
+
 /* The field and its one action share a row: the check sits at the end of the text
    it publishes rather than in a footer of its own. */
 .dsh-enhance-edit__body {
   display: flex;
   align-items: flex-end;
   gap: 6px;
+  /* Matches the header's inset so the note and the quoted passage line up. */
+  padding: 0 8px 8px 12px;
 }
 
 .dsh-enhance-edit__field {
@@ -542,8 +607,8 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   margin-bottom: 2px;
   padding: 0;
   border: 0;
@@ -611,7 +676,11 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   align-items: center;
   gap: 7px;
   min-width: 0;
-  padding: 2px 4px 0;
+  /* Sits on the dialog's own edge: a small inset on every side is enough to
+     keep the text off the rounded corner, no wider. Both the header and the
+     field share the same left inset so the quote and the note start on one
+     line. */
+  padding: 8px 8px 4px 12px;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -720,10 +789,12 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 420px;
   max-width: calc(100vw - 32px);
-  padding: 12px;
+  /* Flush like the selection popover: the field and the header sit on the
+     dialog's own surface instead of inside a second inset frame. */
+  padding: 0;
   border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
   border-radius: 16px;
   background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 90%, transparent);
@@ -748,25 +819,30 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   box-sizing: border-box;
   display: block;
   width: 100%;
-  min-height: 68px;
-  padding: 8px 10px;
+  /* Height follows the text, never a scrollbar: no max-height, no vertical
+     overflow, sized from scrollHeight on every change (see the editor). */
+  min-height: 24px;
+  max-height: none;
+  /* No horizontal inset of its own: the body row already carries the dialog's
+     left edge, and doubling it pushed the note 12px right of the quote. */
+  padding: 4px 0 8px;
   max-width: 100%;
   border: 0;
-  border-radius: 11px;
-  /* No second frame inside the dialog: the dialog itself is the surface, and a
-     nested border plus wash read as a stray box. The field only tints slightly
-     so the caret area is still distinguishable. */
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  border-radius: 0;
+  /* No frame of its own: the dialog is the surface, so the words sit directly
+     on it. */
+  background: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   line-height: 20px;
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
 }
 
 .dsh-enhance-edit__field:focus {
   outline: none;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  background: transparent;
 }
 
 .dsh-enhance-edit__row {

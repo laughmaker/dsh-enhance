@@ -61,6 +61,14 @@ export function AnnotationTray({
   const [editAnchor, setEditAnchor] = useState<DOMRect | undefined>(undefined)
 
   /** Open the editor for one annotation, anchored under the badge that asked. */
+  /**
+   * Whether the editor dialog is open, read from inside timer and pointer
+   * callbacks. A ref keeps the dismissal callbacks stable instead of rebuilding
+   * them on every keystroke in the note field.
+   */
+  const editorOpen = useRef(false)
+  editorOpen.current = editing !== undefined
+
   const setEditingAt = (annotation: Annotation | undefined, anchor?: DOMRect): void => {
     setEditing(annotation)
     setEditAnchor(anchor)
@@ -111,6 +119,9 @@ export function AnnotationTray({
     closeTimer.current = setTimeout(() => {
       closeTimer.current = null
       setOpen(false)
+      // The editor owns the mark while it is open; only the list's own preview
+      // highlight is released here.
+      if (editorOpen.current) return
       clearHighlight()
     }, 180)
   }, [keepOpen])
@@ -119,10 +130,21 @@ export function AnnotationTray({
   const dismissAll = useCallback(() => {
     keepOpen()
     setOpen(false)
+    if (editorOpen.current) return
     clearHighlight()
   }, [keepOpen])
 
   useEffect(() => () => { keepOpen() }, [keepOpen])
+
+  // The editor's own annotation owns the highlight for as long as it is open,
+  // and releases it when the editor closes — by save, cancel, delete, Escape, or
+  // a click outside. Doing it here covers every one of those paths instead of
+  // repeating the call at each exit.
+  useEffect(() => {
+    if (editing === undefined) return
+    highlightAnnotation(editing)
+    return () => { clearHighlight() }
+  }, [editing])
 
   // Place the list after it renders, in a layout effect so the very first paint
   // already carries coordinates. Measuring in a plain effect ran before the
@@ -160,7 +182,13 @@ export function AnnotationTray({
       const { clientX: x, clientY: y } = event
       const overPill = inside(pill.current, x, y)
       const overList = inside(list.current, x, y)
-      if (overPill || overList) {
+      // An open editor is part of the tray for as long as it is open. Without
+      // this, moving the pointer from the icon into the note field counted as
+      // "left the tray", which ran the dismiss path and dropped the highlight
+      // on the passage the reader was editing.
+      const overEditor = editing !== undefined
+        && inside(document.querySelector<HTMLElement>('[data-dsh-enhance-edit]'), x, y)
+      if (overPill || overList || overEditor) {
         keepOpen()
         setOpen(true)
         return
@@ -169,7 +197,7 @@ export function AnnotationTray({
     }
     document.addEventListener('pointermove', onMove, true)
     return () => { document.removeEventListener('pointermove', onMove, true) }
-  }, [annotations.length, keepOpen, scheduleClose])
+  }, [annotations.length, editing, keepOpen, scheduleClose])
 
   // Dismiss on an outside pointer or Escape. The listener runs on the document,
   // so clicking anywhere else — the composer, the transcript, another panel —
@@ -250,8 +278,14 @@ export function AnnotationTray({
                 type="button"
                 className="dsh-enhance-tray__row"
                 aria-label={t('tray.reveal')}
-                onMouseEnter={() => { highlightAnnotation(annotation) }}
-                onMouseLeave={() => { clearHighlight() }}
+                onMouseEnter={() => {
+                  // A second row hovering does not steal the mark from an open
+                  // editor: that annotation is what the reader is working on.
+                  if (editing === undefined) highlightAnnotation(annotation)
+                }}
+                onMouseLeave={() => {
+                  if (editing === undefined) clearHighlight()
+                }}
                 onClick={() => { revealAnnotation(annotation) }}
               >
                 <span className="dsh-enhance-tray__index" aria-hidden="true">{index + 1}</span>
@@ -268,7 +302,9 @@ export function AnnotationTray({
                   className="dsh-enhance-tray__icon"
                   aria-label={t('tray.edit')}
                   title={t('tray.edit')}
-                  onMouseEnter={() => { highlightAnnotation(annotation) }}
+                  onMouseEnter={() => {
+                    if (editing === undefined) highlightAnnotation(annotation)
+                  }}
                   onClick={() => { setEditingAt(annotation) }}
                 >
                   <PencilGlyph />
@@ -298,6 +334,11 @@ export function AnnotationTray({
             onEdit(editing.id, note)
             setEditingAt(undefined)
           }}
+          onDelete={() => {
+            onRemove(editing.id)
+            setEditingAt(undefined)
+            dismissAll()
+          }}
         />
       )}
     </div>
@@ -311,13 +352,15 @@ export function AnnotationTray({
  * reading the passage behind it, so the header doubles as a drag handle and the
  * panel never blocks the page.
  */
-function AnnotationEditor({ t, annotation, anchor, onCancel, onSave }: {
+function AnnotationEditor({ t, annotation, anchor, onCancel, onSave, onDelete }: {
   readonly t: TranslateNS<'dshEnhance'>
   readonly annotation: Annotation
   /** Bounds of the badge that opened the editor, when a badge opened it. */
   readonly anchor: DOMRect | undefined
   readonly onCancel: () => void
   readonly onSave: (note: string) => void
+  /** Drop this annotation and close the dialog. */
+  readonly onDelete: () => void
 }): ReactNode {
   const [value, setValue] = useState(annotation.note)
   const field = useRef<HTMLTextAreaElement>(null)
@@ -329,7 +372,28 @@ function AnnotationEditor({ t, annotation, anchor, onCancel, onSave }: {
   // produced, so dragging can never leave the panel off screen.
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
 
-  useEffect(() => { field.current?.focus({ preventScroll: true }) }, [])
+  // Focus with the caret at the end of the existing note.
+  //
+  // `focus()` alone puts the caret at the start, so opening the editor on a note
+  // that already has text left the reader typing in front of it: the first
+  // keystroke landed before the existing sentence instead of continuing it.
+  useEffect(() => {
+    const element = field.current
+    if (element === null) return
+    element.focus({ preventScroll: true })
+    const end = element.value.length
+    element.setSelectionRange(end, end)
+  }, [])
+
+  // Height follows the note instead of scrolling it. Same treatment as the
+  // selection popover's field: measure from scrollHeight, reset to auto first so
+  // a deleted line shrinks the panel back, and never let a scrollbar appear.
+  useLayoutEffect(() => {
+    const element = field.current
+    if (element === null) return
+    element.style.height = 'auto'
+    element.style.height = `${element.scrollHeight}px`
+  }, [value])
 
   // Placement mirrors the popover: anchor under the badge that opened the dialog,
   // flip above when the viewport has no room below, and clamp both axes.
@@ -392,6 +456,20 @@ function AnnotationEditor({ t, annotation, anchor, onCancel, onSave }: {
         onPointerCancel={endDrag}
       >
         <span className="dsh-enhance-edit__label">{collapse(annotation.passage)}</span>
+        {/* Removal lives on the panel that already names the annotation, so the
+            reader deletes the one they are looking at instead of hunting for the
+            row in the list. The pointer-down is stopped: the header is the drag
+            handle, and pressing a button there must not start a drag. */}
+        <button
+          type="button"
+          className="dsh-enhance-edit__delete"
+          aria-label={t('tray.remove')}
+          title={t('tray.remove')}
+          onPointerDown={(event) => { event.stopPropagation() }}
+          onClick={() => { onDelete() }}
+        >
+          <TrashGlyph />
+        </button>
       </div>
       <div className="dsh-enhance-edit__body">
         <textarea
@@ -474,14 +552,31 @@ function PencilGlyph(): ReactNode {
 /** Trash glyph. */
 function TrashGlyph(): ReactNode {
   return (
-    <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+      {/* Lid with a raised handle, a tapered body, and two vertical ribs — the
+          can is drawn as one outline so it stays legible at 14px. */}
       <path
-        d="M3.4 4.6h9.2M6.4 4.6V3.2h3.2v1.4M4.8 4.6l.6 8.2h5.2l.6-8.2"
+        d="M2.6 4.4h10.8M6.1 4.4V2.9h3.8v1.5"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.2"
+        strokeWidth="1.35"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+      <path
+        d="M4.1 4.4h7.8l-.7 8.1a2 2 0 0 1-2 1.8H6.8a2 2 0 0 1-2-1.8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.7 7.2v4.2M9.3 7.2v4.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
       />
     </svg>
   )

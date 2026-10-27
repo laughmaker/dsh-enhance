@@ -227,16 +227,56 @@ function searchRanges(passage: string, flowKey: string | undefined): Range[] {
   const ranges: Range[] = []
   for (const root of roots) {
     for (const text of textNodesOf(root)) {
-      const index = text.data.replace(/\s+/g, ' ').indexOf(needle)
-      if (index < 0) continue
+      // Match on the collapsed form, then map the hit back onto the raw text.
+      //
+      // Collapsing whitespace changes the string's length, so an index taken
+      // from the collapsed form is not a valid offset into `text.data`. That
+      // mismatch silently missed every passage that spanned a line break —
+      // exactly the multi-line prose these annotations point at — so the
+      // passage never got a range and its highlight never appeared.
+      const collapsed = text.data.replace(/\s+/g, ' ')
+      const hit = collapsed.indexOf(needle)
+      if (hit < 0) continue
+      const start = rawIndexOf(text.data, hit)
+      const end = rawIndexOf(text.data, hit + needle.length)
+      if (start === undefined || end === undefined) continue
       const range = document.createRange()
-      range.setStart(text, index)
-      range.setEnd(text, Math.min(index + needle.length, text.data.length))
+      range.setStart(text, start)
+      range.setEnd(text, end)
       ranges.push(range)
       return ranges
     }
   }
   return ranges
+}
+
+/**
+ * Map an offset in the whitespace-collapsed text back to the raw text.
+ *
+ * `collapsedOffset` counts characters after every run of whitespace became a
+ * single space, so walking the raw string while emitting one position per
+ * collapsed character gives the matching raw index. A collapsed offset equal to
+ * the collapsed length maps to the end of the raw string.
+ * @param raw - the node's actual text.
+ * @param collapsedOffset - the index in `raw.replace(/\s+/g, ' ')`.
+ * @returns the equivalent index in `raw`.
+ */
+function rawIndexOf(raw: string, collapsedOffset: number): number | undefined {
+  if (collapsedOffset < 0) return undefined
+  let produced = 0
+  let index = 0
+  while (index < raw.length) {
+    if (produced === collapsedOffset) return index
+    // One collapsed character per run: step over the whole whitespace run.
+    if (/\s/.test(raw[index] ?? '')) {
+      while (index < raw.length && /\s/.test(raw[index] ?? '')) index += 1
+      produced += 1
+      continue
+    }
+    index += 1
+    produced += 1
+  }
+  return produced === collapsedOffset ? raw.length : undefined
 }
 
 /**
@@ -356,18 +396,40 @@ export function clearMarks(sessionId: string): void {
 /** Attribute marking an inline annotation badge this plugin inserted. */
 export const BADGE_ATTRIBUTE = 'data-dsh-enhance-badge'
 
+
 /**
- * Pin glyph for the inline badge.
+ * One solid disc carrying the reading-order number.
  *
- * Drawn rather than typed: an emoji renders at the platform's own size and
- * baseline, which made the marker look different in every app it appeared in.
- * `currentColor` keeps it on the badge's own palette in both themes.
+ * Earlier takes drew a pin with a counter beside it, or a counter notched into
+ * the pin's outline; both read as two shapes on one line. A single filled disc
+ * with the digits inside is one mark with one silhouette, which is what the
+ * inline marker needs to be. The disc grows into a pill for two and three
+ * digits so the number never outgrows the shape.
+ * @param number - the annotation's 1-based position.
+ * @returns the SVG markup for one badge.
  */
-const PIN_GLYPH = `<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true" focusable="false">
-  <path d="M8 1.6c2.5 0 4.5 2 4.5 4.5 0 3.2-4.5 8.3-4.5 8.3S3.5 9.3 3.5 6.1C3.5 3.6 5.5 1.6 8 1.6Z"
-        fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-  <circle cx="8" cy="6.2" r="1.7" fill="currentColor"/>
+function badgeGlyph(number: number): string {
+  const digits = String(number)
+  // Rounded-square tile, measured off the reference marker: the blue field is
+  // square, its corner radius is a little under half the side, and the white
+  // ring is a thin hairline (~4% of the side) rather than a heavy border — the
+  // ring is only there to lift the tile off body text. The fill is the
+  // reference's own blue, not a generic accent.
+  const length = digits.length
+  const side = 22
+  const width = length > 1 ? side + (length - 1) * 11 : side
+  const ring = 1.1
+  const radius = 8.6
+  const fontSize = length > 2 ? 10.5 : length > 1 ? 12 : 13.5
+  return `<svg viewBox="0 0 ${width} ${side}" width="${width}" height="${side}" aria-hidden="true" focusable="false">
+  <rect x="${ring / 2}" y="${ring / 2}" width="${width - ring}" height="${side - ring}"
+        rx="${radius}" fill="#0268cc" stroke="#e9e9e9" stroke-width="${ring}"/>
+  <text x="${width / 2}" y="${side / 2 + 0.5}" text-anchor="middle" dominant-baseline="central"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+        font-size="${fontSize}" font-weight="500" fill="#fff"
+        style="font-variant-numeric: tabular-nums">${digits}</text>
 </svg>`
+}
 
 /**
  * Place one annotation badge at the end of every marked passage.
@@ -386,16 +448,32 @@ export function mountBadges(annotations: readonly Annotation[], onClick: (id: st
   // DOM writes below are observed by the caller, so a non-idempotent mount would
   // re-enter itself and stall the page. Each annotation keeps at most one badge,
   // and an existing badge is left exactly where it is.
-  const existing = new Set(
-    [...document.querySelectorAll(`[${BADGE_ATTRIBUTE}]`)].map(badge => badge.getAttribute(BADGE_ATTRIBUTE) ?? ''),
-  )
+  const existing = new Map<string, HTMLButtonElement>()
+  for (const badge of document.querySelectorAll<HTMLButtonElement>(`[${BADGE_ATTRIBUTE}]`)) {
+    existing.set(badge.getAttribute(BADGE_ATTRIBUTE) ?? '', badge)
+  }
+  // Numbering follows the store's order, so it re-derives on every repaint: a
+  // removed annotation closes the gap instead of leaving 1, 3, 4 behind. Badges
+  // already mounted are renumbered in place rather than rebuilt, which keeps the
+  // observer from seeing a remove/insert pair for every marker on each pass.
   let mounted = 0
-  for (const annotation of annotations) {
-    if (existing.has(annotation.id)) continue
+  annotations.forEach((annotation, offset) => {
+    const number = offset + 1
+    const live = existing.get(annotation.id)
+    if (live !== undefined) {
+      live.dataset.dshEnhanceBadgeNumber = String(number)
+      live.setAttribute('aria-label', badgeLabel(annotation, number))
+      live.title = badgeLabel(annotation, number)
+      const slot = live.querySelector('svg text')
+      if (slot !== null && slot.textContent !== String(number)) {
+        live.innerHTML = badgeGlyph(number)
+      }
+      return
+    }
     const ranges = rangesOf(annotation)
     const last = ranges[ranges.length - 1]
-    if (last === undefined) continue
-    const badge = createBadge(annotation, onClick)
+    if (last === undefined) return
+    const badge = createBadge(annotation, number, onClick)
     // A zero-width marker span gives the badge a stable insertion point that does
     // not disturb the text it follows.
     const anchor = document.createElement('span')
@@ -411,25 +489,45 @@ export function mountBadges(annotations: readonly Annotation[], onClick: (id: st
       container.parentNode?.insertBefore(anchor, container.nextSibling)
     }
     mounted += 1
-  }
+  })
   return mounted
 }
 
 /**
- * Build one badge button.
+ * Accessible name for one badge: the reading order number, then the note (or
+ * the passage when the reader left the note empty).
  * @param annotation - the annotation it marks.
+ * @param number - its 1-based position in the Session's annotation list.
+ * @returns the label shared by `title` and `aria-label`.
+ */
+function badgeLabel(annotation: Annotation, number: number): string {
+  const body = annotation.note.trim().length > 0 ? annotation.note : annotation.passage
+  return `${number}. ${body}`
+}
+
+/**
+ * Build one badge button.
+ *
+ * The badge carries the annotation's position, not just a pin: with several
+ * passages marked in one conversation, an unnumbered pin says "something here"
+ * where the reader needs "this is the one the tray's first row refers to". The
+ * number sits in a filled circle beside the pin, matching the marker shape the
+ * annotation list uses.
+ * @param annotation - the annotation it marks.
+ * @param number - its 1-based position among the Session's annotations.
  * @param onClick - called with the annotation id when activated.
  * @returns the detached button.
  */
-function createBadge(annotation: Annotation, onClick: (id: string) => void): HTMLButtonElement {
+function createBadge(annotation: Annotation, number: number, onClick: (id: string) => void): HTMLButtonElement {
   const badge = document.createElement('button')
   badge.type = 'button'
   badge.setAttribute(BADGE_ATTRIBUTE, annotation.id)
   badge.className = 'dsh-enhance-badge'
-  const label = annotation.note.trim().length > 0 ? annotation.note : annotation.passage
+  badge.dataset.dshEnhanceBadgeNumber = String(number)
+  const label = badgeLabel(annotation, number)
   badge.title = label
   badge.setAttribute('aria-label', label)
-  badge.innerHTML = PIN_GLYPH
+  badge.innerHTML = badgeGlyph(number)
   badge.addEventListener('click', (event) => {
     event.stopPropagation()
     event.preventDefault()

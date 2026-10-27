@@ -1,7 +1,7 @@
 {
   "name": "dsh-enhance",
-  "version": "0.1.0",
-  "description": "DeepSeek Harness enhancements: Markdown theme for every renderer, select-text annotations with pins, and a narrower sidebar. \u4e2d\u6587\uff1aDSH \u589e\u5f3a\u63d2\u4ef6\u2014\u2014Markdown \u4e3b\u9898\u3001\u5212\u8bcd\u6279\u6ce8\u3001\u4fa7\u680f\u5bbd\u5ea6\u3002",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness enhancements: Markdown theme for every renderer, select-text annotations with pins, and a narrower sidebar. 中文：DSH 增强插件——Markdown 主题、划词批注、侧栏宽度。",
   "type": "module",
   "main": "lib/index.js",
   "dsh": {

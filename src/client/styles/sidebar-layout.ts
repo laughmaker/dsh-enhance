@@ -8,9 +8,22 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
 [class*="sidebarCol"] [class*="sectionLabel"] {
   margin-left: 4px !important;
 }
-[role="treeitem"][data-row-key^="session:"] {
-  padding-left: 10px !important;
+/* One indent for both row kinds.
+ *
+ * Session rows and workspace rows previously used different start insets, which
+ * made the tree look ragged: the folder title sat further right than the session
+ * titles under it. Both now start at 5px.
+ *
+ * A negative margin on the workspace row was tried and reverted: it dragged the
+ * whole row — glyph included — past the sidebar's left edge, so every triangle
+ * disappeared. The indent is the only lever that stays inside the column. */
+[role="treeitem"][data-row-key^="session:"],
+[role="treeitem"][data-row-key^="workspace:"] {
+  padding-inline-start: 5px !important;
 }
+
+
+
 [class*="sidebarCol"] [class*="panelList"] {
   position: absolute !important;
   right: 12px !important;

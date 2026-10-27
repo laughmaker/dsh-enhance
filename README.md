@@ -5,14 +5,16 @@ DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、�
 ## 功能
 
 - **Markdown 主题** — 统一主对话、侧栏对话、文件预览等所有 `MarkdownText` 渲染的排版：标题配色、加粗、行内代码、代码块、表格、引用块。浅色/深色两套配色自动跟随主题。
-- **划词批注** — 选中文字弹出小面板写一句要求（Enter 确认，Esc 取消）。确认后汇总为输入框内的 `N annotations` 胶囊：
+- **划词批注** — 选中文字弹出小面板写一句要求（Enter 确认，Esc 取消；弹窗出现即自动聚焦输入框，光标落在末尾）。确认后汇总为输入框内的 `N annotations` 胶囊：
   - 悬停胶囊展开列表，每行显示要求与引文
   - 悬停行会在正文高亮对应段落，点击行滚动定位到原文
   - 每行右侧可编辑（弹窗）或删除，胶囊右侧一键清空
-  - 已批注段落在正文保留琥珀色图钉，点击图钉直接编辑该批注
-  - 发送消息时自动拼进消息，输入框保持干净
+  - 已批注段落在正文保留带序号的蓝色圆标（图钉与编号合为一个图标），点击圆标直接编辑该批注，并在正文保持该段落的高亮
+  - 编辑弹窗内可直接删除该批注
+  - 有批注挂起时发送按钮即刻可用，而输入框保持空白；发送瞬间才把引文拼进消息
+  - 弹窗输入框无内边距、贴合面板，高度随内容自动增长且不出现滚动条
 - **侧栏提问** — 从同一面板把段落送到右侧栏的侧边对话，不打断当前对话。首次创建，之后复用同一标签页。
-- **侧栏更窄** — 侧栏可拖到 214px（上游限制 264px），文字相应缩小一档。
+- **侧栏更窄** — 侧栏可拖到 214px（上游限制 264px），文字相应缩小一档；文件夹图标换成展开/收起三角，文件夹标题与会话标题同字号、左端对齐。
 - **Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏「绿点未读会话」的数量：某会话跑完而你没在看它（切到别的会话或别的 App）就 +1，点开读一下即 -1，全部读完角标消失。直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源），走标准 Badging API（`navigator.setAppBadge`），宿主不支持时静默降级。
 
 ## 安装
@@ -24,9 +26,9 @@ DSH 打开 **Plugins** 页面 → 添加插件 → 输入 `dsh-enhance` → 安�
 ### 方式二：本地 tar 包
 
 ```bash
-# 从 Releases 下载 dsh-enhance-0.1.0.tgz 后
+# 从 Releases 下载 dsh-enhance-0.2.0.tgz 后
 cd ~/.dsh/profiles/desktop
-npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.1.0.tgz"
+npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.2.0.tgz"
 ```
 
 再编辑 `~/.dsh/profiles/desktop/package.json`，把 `dsh-enhance` 加入 `dsh.profile.bundles`：
@@ -111,6 +113,15 @@ npx pnpm@11.28.5 remove dsh-enhance
 # 测试
 ./node_modules/.bin/vitest run plugins/dsh-enhance/tests
 ```
+
+本机 `tsdown`/`vitest` 依赖的 rolldown 原生绑定存在代码签名问题，可能无法运行（报 `Cannot find module '@rolldown/binding-darwin-universal'` 或 `different Team IDs`）。这种情况下改样式表后可用同步脚本落地，它只替换 `lib/client.js` 中对应 `//#region` 的 `String.raw` 负载，其余字节保持不变：
+
+```bash
+node script/sync-style.mjs            # 同步全部样式表
+node script/sync-style.mjs toolbar    # 只同步某一张
+```
+
+脚本会拒绝含反引号或 `${` 的 CSS——样式表被包在 `String.raw` 模板里，这类字符会提前闭合模板并静默截断整张表。
 
 ### 发布
 

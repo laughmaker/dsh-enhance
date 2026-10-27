@@ -24,11 +24,11 @@ import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-cl
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { SelectionToolbar, type AnnotationSubmit } from './SelectionToolbar.tsx'
 import {
-  addAnnotation, annotationsOf, annotationsPrompt, annotationsVisibleIn, clearAnnotations,
+  addAnnotation, annotationLine, annotationsOf, annotationsPrompt, annotationsVisibleIn, clearAnnotations,
   removeAnnotation, subscribeAnnotations, updateAnnotationNote, type Annotation,
   type AnnotationAnchor,
 } from './annotations.ts'
-import { anchorForRange, clearMarks, mountBadges, paintMarks, removeBadges } from './anchors.ts'
+import { anchorForRange, clearHighlight, clearMarks, highlightAnnotation, mountBadges, paintMarks, removeBadges } from './anchors.ts'
 import { AnnotationTray } from './AnnotationTray.tsx'
 
 /** Owner face the composer seat is registered with. */
@@ -91,7 +91,12 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
   useEffect(() => {
     // A badge opens that annotation's editor only. Raising the list as well put
     // two surfaces on screen for one gesture, and the list is the pill's job.
+    // The passage itself is highlighted at the same time: the editor names the
+    // quote in its header, and the reader needs to see which words it refers to
+    // while rewriting the note.
     const onClick = (id: string): void => {
+      const target = annotationsVisibleIn(sessionId).find(annotation => annotation.id === id)
+      if (target !== undefined) highlightAnnotation(target)
       setEditingId(id)
     }
     /** Repaint marks and badges; idempotent, so calling it twice costs nothing. */
@@ -141,6 +146,7 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
     return () => {
       observer.disconnect()
       removeBadges()
+      clearHighlight()
       clearMarks(sessionId)
     }
   }, [annotations, sessionId])
@@ -154,27 +160,77 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
     [sessionId],
   )
 
-  // Fold the annotations into the message at send time, not before: the draft
-  // stays exactly what the reader typed, and the passages travel with whatever
-  // they send. Capture phase, so this runs before the composer's own handlers.
+  // Turn the send button on while an annotation is pending, and fold the
+  // passages into the message only when the reader actually sends.
+  //
+  // The composer disables its primary button from `empty`, defined as
+  // `draft.trim() === "" && attachments.length === 0`. An annotation is
+  // neither — it lives in this plugin's store until the message goes out — so
+  // marking a passage left the button grey and the one gesture that means "ask
+  // about this" could not be acted on. Seeding the draft would fix the colour
+  // but put words in the reader's input, so instead this keeps the draft
+  // untouched and lifts the `disabled` attribute for as long as annotations
+  // are pending. The click handler fills the draft first and then lets the
+  // composer's own submit run, capture phase, so the message carries the
+  // passages and the text never appears as something the reader typed.
   useEffect(() => {
     if (annotations.length === 0) return
     const card = root.current?.closest('[data-composer-card]')
     if (card === null || card === undefined) return
-    const carry = (): void => {
-      const text = `${annotationsPrompt(annotations)}\n\n`
-      // Insert at the caret so reference chips and later edits survive; fall
-      // back to appending when the captured revision no longer matches.
-      const insertion = inputActions.captureInsertion()
-      if (!inputActions.insertText(text, insertion)) {
-        inputActions.setDraft(`${draft}${draft === '' ? '' : '\n\n'}${text}`)
-        inputActions.persistDraft()
-      }
-      clearAnnotations(sessionId)
+
+    // The button is inside the composer card; find it once per pass rather than
+    // per mutation.
+    const primaryOf = (): HTMLButtonElement | undefined => {
+      const button = card.querySelector<HTMLButtonElement>('button[class*="_primary"]')
+      return button ?? undefined
     }
-    const onPointer = (event: Event): void => {
+
+    /**
+     * Lift the composer's own `empty` decision off the send button.
+     *
+     * React re-renders the button on every draft/store change and puts
+     * `disabled` back, so this runs from the observer below as well as up front.
+     * The attribute is removed rather than faked with CSS: a `disabled` button
+     * swallows the click entirely, and the click is what carries the passages.
+     */
+    const enable = (): void => {
+      const button = primaryOf()
+      if (button === undefined) return
+      if (button.disabled) button.disabled = false
+      // `aria-disabled` is what a screen reader announces; leaving it true would
+      // report a button that cannot be pressed.
+      if (button.getAttribute('aria-disabled') === 'true') button.removeAttribute('aria-disabled')
+      button.dataset.dshEnhanceSendReady = ''
+    }
+
+    let carrying = false
+    const carry = (): void => {
+      if (carrying) return
+      carrying = true
+      try {
+        // Keep the draft exactly as the reader left it apart from this block:
+        // only annotations whose line is not already there get inserted.
+        const missing = annotations.filter(annotation => !draft.includes(annotationLine(annotation)))
+        if (missing.length > 0) {
+          const text = `${annotationsPrompt(missing)}\n\n`
+          const insertion = inputActions.captureInsertion()
+          if (!inputActions.insertText(text, insertion)) {
+            inputActions.setDraft(`${draft}${draft === '' ? '' : '\n\n'}${text}`)
+            inputActions.persistDraft()
+          }
+        }
+        clearAnnotations(sessionId)
+      } finally {
+        carrying = false
+      }
+    }
+
+    // Pointer events, not just clicks: the composer submits from a click on the
+    // button, but pressing Enter submits from the editor, and both must carry
+    // the passages. Capture phase keeps this ahead of the app's own handlers.
+    const onClick = (event: Event): void => {
       const target = event.target
-      if (target instanceof Element && target.closest('[class*="_primary"]') !== null) carry()
+      if (target instanceof Element && target.closest('button[class*="_primary"]') !== null) carry()
     }
     const onKey = (event: Event): void => {
       if (!(event instanceof KeyboardEvent)) return
@@ -182,11 +238,22 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
       const target = event.target
       if (target instanceof Element && target.closest('[contenteditable="true"]') !== null) carry()
     }
-    card.addEventListener('click', onPointer, true)
+
+    enable()
+    // React owns the attribute, so every re-render can restore it. Watching the
+    // button's own attributes catches that without polling.
+    const observer = new MutationObserver(() => { enable() })
+    const button = primaryOf()
+    if (button !== undefined) observer.observe(button, { attributes: true, attributeFilter: ['disabled'] })
+
+    card.addEventListener('click', onClick, true)
     card.addEventListener('keydown', onKey, true)
     return () => {
-      card.removeEventListener('click', onPointer, true)
+      observer.disconnect()
+      card.removeEventListener('click', onClick, true)
       card.removeEventListener('keydown', onKey, true)
+      const current = primaryOf()
+      if (current !== undefined) delete current.dataset.dshEnhanceSendReady
     }
   }, [annotations, draft, inputActions, sessionId])
 
