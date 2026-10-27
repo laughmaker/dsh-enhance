@@ -1,6 +1,6 @@
 # dsh-enhance
 
-DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、侧栏更窄。
+DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、侧栏更窄、启动默认状态。
 
 ## 功能
 
@@ -15,6 +15,9 @@ DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、�
   - 弹窗输入框无内边距、贴合面板，高度随内容自动增长且不出现滚动条
 - **侧栏提问** — 从同一面板把段落送到右侧栏的侧边对话，不打断当前对话。首次创建，之后复用同一标签页。
 - **侧栏更窄** — 侧栏可拖到 214px（上游限制 264px），文字相应缩小一档；文件夹图标换成展开/收起三角，文件夹标题与会话标题同字号、左端对齐。
+- **启动即最窄** — 首次启动侧栏直接是 214px（上游每次加载都回到 280px），之后按你上次拖到的宽度打开。折叠/展开不会丢掉这个宽度。
+- **窗口铺满屏幕** — 首次启动主窗口铺满可用区域（菜单栏与 Dock 保留，等同绿色按钮的缩放）；之后按上次关闭时的窗口位置与大小重新打开。保存的窗口若超出当前显示器（换屏、改分辨率）会被拉回可见区域。
+- **运行中彩色转圈** — 侧栏里正在运行的会话，状态环不再是宿主那样的灰色，而是一圈彩色：蓝→紫→洋红→琥珀的 4 秒色相循环，浅色与深色主题下都清晰。环的转动与虚线段仍由宿主驱动，本插件只改颜色；其他位置的状态点（任务、审批、工作流）保持原样。
 - **Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏「绿点未读会话」的数量：某会话跑完而你没在看它（切到别的会话或别的 App）就 +1，点开读一下即 -1，全部读完角标消失。直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源），走标准 Badging API（`navigator.setAppBadge`），宿主不支持时静默降级。
 
 ## 安装
@@ -26,9 +29,9 @@ DSH 打开 **Plugins** 页面 → 添加插件 → 输入 `dsh-enhance` → 安�
 ### 方式二：本地 tar 包
 
 ```bash
-# 从 Releases 下载 dsh-enhance-0.2.0.tgz 后
+# 从 Releases 下载 dsh-enhance-0.3.0.tgz 后
 cd ~/.dsh/profiles/desktop
-npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.2.0.tgz"
+npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.3.0.tgz"
 ```
 
 再编辑 `~/.dsh/profiles/desktop/package.json`，把 `dsh-enhance` 加入 `dsh.profile.bundles`：
@@ -82,6 +85,10 @@ npx pnpm@11.28.5 remove dsh-enhance
 - 批注保存在浏览器内存，不落盘，**刷新页面后清空**。
 - 批注按会话隔离，切换会话不会串。
 - 划词手势只在主对话生效；侧边对话通过「侧栏提问」接收批注。
+- 窗口几何与侧栏宽度存在渲染进程的 `localStorage`（`dsh-enhance.window-geometry.v1`、`dsh-enhance.sidebar-width.v1`），清缓存或换机器后回到默认：铺满 + 214px。
+- 窗口由页面侧调用 `resizeTo`/`moveTo` 驱动，因此是「缩放铺满」而不是系统全屏；全屏仍走绿色按钮或系统菜单。
+- macOS 下渲染进程收不到纯移动（`move`）事件，窗口位置在最后一次改变大小、失焦或页面隐藏时记录；只拖动位置未改大小就立即强退，位置可能停在上一次记录的点。
+- 首次启动只有在没有任何已保存状态时才铺满；想回到默认，清掉上述两个键后重启。
 
 ---
 
@@ -98,10 +105,12 @@ npx pnpm@11.28.5 remove dsh-enhance
 | `src/client/AnnotationTray.tsx` | 胶囊列表与编辑弹窗 |
 | `src/client/annotations.ts` | 批注存储（会话维度） |
 | `src/client/anchors.ts` | 在转录区重新定位段落、绘制高亮与图钉 |
-| `src/client/sidebar-floor.ts` | 侧栏拖拽下限（264 → 214） |
+| `src/client/sidebar-floor.ts` | 侧栏拖拽下限（264 → 214）、启动宽度应用与拖拽落定回调 |
+| `src/client/sidebar-width.ts` | 记住侧栏宽度（首次 214，之后按上次拖到的值） |
+| `src/client/window-geometry.ts` | 窗口几何：首次铺满可用区域，之后恢复上次的窗口位置与大小 |
 | `src/client/turn-badge.ts` | Dock 未读会话角标（映射宿主 completionUnread） |
 | `src/client/side-chat.ts` | 侧栏对话资源与标签页 |
-| `src/client/styles/` | 各样式表（每个文件导出一个 `String.raw` 模板） |
+| `src/client/styles/` | 各样式表（每个文件导出一个 `String.raw` 模板）；`running-spinner.ts` 负责侧栏运行中色环 |
 | `lib/` | 构建产物，即 `npm pack` 打包内容 |
 
 ### 构建与测试

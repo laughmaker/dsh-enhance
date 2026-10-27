@@ -68,17 +68,33 @@ function assertTemplateSafe(sheet, source) {
 
 /**
  * Replace one region's payload inside the bundle.
+ *
+ * The bundler emits regions either as `//#region <path>` … `//#endregion` or,
+ * at a lower comment level, as a bare `// <path>` separator line. Both forms
+ * are accepted so the script keeps working across tsdown/rolldown versions.
  * @param bundle - current `lib/client.js` contents.
  * @param sheet - stylesheet base name, e.g. `sidebar-density`.
  * @param css - the new CSS payload.
  * @returns updated bundle contents.
  */
 function replaceRegion(bundle, sheet, css) {
-  const marker = `//#region src/client/styles/${sheet}.ts`
-  const at = bundle.indexOf(marker)
-  if (at < 0) throw new Error(`region not found: ${sheet}`)
-  const end = bundle.indexOf('//#endregion', at)
-  if (end < 0) throw new Error(`region end not found: ${sheet}`)
+  const sourcePath = `src/client/styles/${sheet}.ts`
+  const marked = `//#region ${sourcePath}`
+  let at = bundle.indexOf(marked)
+  let end = at < 0 ? -1 : bundle.indexOf('//#endregion', at)
+  if (at < 0) {
+    // Bare form: the header line is the whole marker, and the region ends where
+    // the next source file starts (or at the bundle footer).
+    const escaped = sourcePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const header = new RegExp(`^[ \\t]*// ${escaped}$`, 'm').exec(bundle)
+    if (header === null) throw new Error(`region not found: ${sheet}`)
+    at = header.index
+    const next = new RegExp(`^[ \\t]*// src/client/[^\\n]+$`, 'gm')
+    next.lastIndex = header.index + header[0].length
+    const following = next.exec(bundle)
+    end = following === null ? bundle.indexOf('return module.exports', at) : following.index
+    if (end < 0) throw new Error(`region end not found: ${sheet}`)
+  }
 
   const region = bundle.slice(at, end)
   const open = region.indexOf('String.raw`')
@@ -93,7 +109,7 @@ function replaceRegion(bundle, sheet, css) {
 const requested = process.argv.slice(2)
 const sheets = requested.length > 0
   ? requested
-  : ['document-preview', 'chat-markdown', 'rightbar-handle', 'sidebar-density', 'sidebar-layout', 'toolbar']
+  : ['document-preview', 'chat-markdown', 'rightbar-handle', 'running-spinner', 'sidebar-density', 'sidebar-layout', 'toolbar']
 
 let bundle = readFileSync(CLIENT, 'utf8')
 for (const sheet of sheets) {

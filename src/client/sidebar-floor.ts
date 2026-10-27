@@ -28,20 +28,52 @@ const CEILING = 420
 /** Attribute marking the shell frame this module is driving. */
 const FRAME_ATTRIBUTE = 'data-dsh-enhance-frame'
 
+/** Attribute the shell sets on the frame while the sidebar is collapsed. */
+const COLLAPSED_ATTRIBUTE = 'data-sidebar-collapsed'
+
+/** Seams the owner supplies: where the column opens, and where each drag ends. */
+export interface SidebarFloorOptions {
+  /**
+   * Width the column should open at, or undefined to leave the app's own value.
+   *
+   * Applied once, after the shell frame mounts. A remembered width above the
+   * app's own floor is painted here too: the layout store starts at 280 on
+   * every load, so without this the reader's last width would be forgotten.
+   */
+  initialWidth?: number
+  /** Called once per drag that changed the width, with the settled value. */
+  onCommit?: (width: number) => void
+}
+
 /**
  * Install the relaxed drag floor.
  * @param root - document the plugin is mounted in.
+ * @param options - startup width and drag commit hook.
  * @returns disposer that stops intercepting and restores the app's own value.
  */
-export function installSidebarFloor(root: Document): () => void {
+export function installSidebarFloor(root: Document, options: SidebarFloorOptions = {}): () => void {
   /** Shell grid frame, once located. */
   let frame: HTMLElement | null = null
   /** The width the plugin last painted, when it is below the app's floor. */
   let held: number | undefined
   /** Elements whose inline width this module overwrote, with their originals. */
   const restored = new Map<HTMLElement, string>()
-  let dragStart: { x: number; width: number } | null = null
+  let dragStart: { x: number, width: number } | null = null
   let applying = false
+
+  /** Clamp a width into the range this module is willing to paint. */
+  const clampWidth = (width: number): number => Math.min(Math.max(width, RELAXED_FLOOR), CEILING)
+
+  /**
+   * The width the column belongs at, across collapses.
+   *
+   * Kept apart from `held` because a collapse is painted by the app as a 0px
+   * track: the module has nothing to hold then, but it must still know where to
+   * put the column when the reader expands it again.
+   */
+  let preferred: number | undefined = options.initialWidth === undefined
+    ? undefined
+    : clampWidth(options.initialWidth)
 
   /** Find the shell frame: the grid whose first child is the sidebar column. */
   const findFrame = (): HTMLElement | null => {
@@ -128,27 +160,37 @@ export function installSidebarFloor(root: Document): () => void {
   }
 
   /**
-   * Keep the plugin's width while the app still reports its own floor.
+   * Keep the column at the width the reader left it at.
    *
    * The app repaints the grid whenever unrelated layout state changes, and it
    * re-renders the content element's width (React re-mounts it on right-panel
    * transitions) without touching the grid string at all. Watching both: a
-   * drifted track is re-held (or adopted on a collapse), and a drifted mirror
-   * is re-stamped even when the track still reads the held width — the one
-   * content-only repaint is exactly what used to leave a dead strip.
+   * drifted track is re-held, a drifted mirror is re-stamped even when the track
+   * still reads the held width, and a column the app re-expanded is moved back
+   * to the remembered width instead of the app's own 280px default.
    */
   const reconcile = (): void => {
     if (applying) return
     frame ??= findFrame()
     if (frame === null) return
-    if (held === undefined) return
     for (const element of [...restored.keys()]) if (!element.isConnected) restored.delete(element)
+    // A collapse is the app's gesture: the column is a 0px track (or the rail)
+    // and this module has no width to hold there. Keep `preferred` so an expand
+    // restores the reader's width rather than the app's default.
+    if (frame.hasAttribute(COLLAPSED_ATTRIBUTE)) {
+      if (held !== undefined) restore()
+      return
+    }
+    if (preferred === undefined) return
+    if (held === undefined) {
+      held = clampWidth(preferred)
+      apply(held)
+      return
+    }
     const drifted = restored.size === 0
       ? false
       : [...restored.keys()].some((element) => element.style.width !== `${Math.round(held!)}px`)
     if (Math.abs(painted() - held) > 0.5) {
-      adoptAppWidth()
-      if (held === undefined) return
       apply(held)
       return
     }
@@ -164,7 +206,10 @@ export function installSidebarFloor(root: Document): () => void {
     frameObserver.disconnect()
     frame = target
     frame.setAttribute(FRAME_ATTRIBUTE, '')
-    frameObserver.observe(frame, { attributes: true, attributeFilter: ['style'] })
+    frameObserver.observe(frame, {
+      attributes: true,
+      attributeFilter: ['style', COLLAPSED_ATTRIBUTE],
+    })
     // The sidebar root is a direct child of the column; a re-mount there is a
     // childList change, and React rewriting its inline width is a style
     // attribute change. Either repaints the content without touching the grid
@@ -176,7 +221,7 @@ export function installSidebarFloor(root: Document): () => void {
       attributes: true,
       attributeFilter: ['style'],
     })
-    if (held !== undefined) apply(held)
+    reconcile()
   }
 
   const onPointerDown = (event: PointerEvent): void => {
@@ -199,7 +244,7 @@ export function installSidebarFloor(root: Document): () => void {
     if (event.buttons === 0) { endDrag(); return }
     event.stopPropagation()
     const wanted = dragStart.width + (event.clientX - dragStart.x)
-    const next = Math.min(Math.max(wanted, RELAXED_FLOOR), CEILING)
+    const next = clampWidth(wanted)
     held = next
     apply(next)
   }
@@ -207,18 +252,11 @@ export function installSidebarFloor(root: Document): () => void {
   const endDrag = (): void => {
     if (dragStart === null) return
     dragStart = null
-  }
-
-  /**
-   * Drop the overrides when the app takes the column over on its own.
-   *
-   * A collapse (to the 56px rail) is the app's gesture, not this module's: the
-   * plugin has no width to hold there, and repainting one would fight the rail.
-   */
-  const adoptAppWidth = (): void => {
+    // Only a drag this module performed is remembered: an app-painted width is
+    // not a reader decision, and the app's own collapse rewrites the track.
     if (held === undefined) return
-    const current = painted()
-    if (current > 0 && current < RELAXED_FLOOR) restore()
+    preferred = held
+    options.onCommit?.(held)
   }
 
   attach()

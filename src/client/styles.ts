@@ -3,6 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { css as documentPreview } from './styles/document-preview.ts'
 import { css as chatMarkdown } from './styles/chat-markdown.ts'
 import { css as rightbarHandle } from './styles/rightbar-handle.ts'
+import { css as runningSpinner } from './styles/running-spinner.ts'
 import { css as sidebarDensity } from './styles/sidebar-density.ts'
 import { css as sidebarLayout } from './styles/sidebar-layout.ts'
 import { css as toolbar } from './styles/toolbar.ts'
@@ -11,10 +12,11 @@ import { css as toolbar } from './styles/toolbar.ts'
 export const PLUGIN_ID = 'dsh-enhance'
 
 /** Sheet name to CSS, in cascade order: later sheets win ties against earlier ones. */
-const SHEETS: readonly (readonly [string, string])[] = [
+export const SHEETS: readonly (readonly [string, string])[] = [
   ['document-preview.css', documentPreview],
   ['chat-markdown.css', chatMarkdown],
   ['rightbar-handle.css', rightbarHandle],
+  ['running-spinner.css', runningSpinner],
   ['sidebar-density.css', sidebarDensity],
   ['sidebar-layout.css', sidebarLayout],
   ['toolbar.css', toolbar],

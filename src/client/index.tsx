@@ -19,6 +19,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller'
 import { installStyles } from './styles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
+import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
+import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
 import { installTurnBadge } from './turn-badge.ts'
 import { LOCALE_NS, en, zh } from './locales.ts'
 
@@ -47,8 +49,21 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
   // The sidebar's minimum width is a module constant in the layout package, so the
-  // drag gesture is taken over to allow 50px below it.
-  ctx.effect(() => installSidebarFloor(document), 'dsh-enhance: sidebar floor')
+  // drag gesture is taken over to allow 50px below it. The same module opens the
+  // column at its narrowest on a first run, then at whatever width the reader left
+  // it at: the layout store itself starts at 280px on every load.
+  const widthStore = pageStorage()
+  ctx.effect(() => installSidebarFloor(document, {
+    initialWidth: startupSidebarWidth(widthStore),
+    onCommit: (width) => { rememberSidebarWidth(widthStore, width) },
+  }), 'dsh-enhance: sidebar floor')
+  // The Electron shell opens at a fixed 1280x820 and remembers nothing; the page it
+  // shows is allowed to size the window, so the first launch fills the work area and
+  // later launches reopen at the frame the last one closed with. A browser tab has
+  // no work area to fill, so the check keeps the module off that path entirely.
+  if (isDesktopShell()) {
+    ctx.effect(() => installStartupGeometry(window), 'dsh-enhance: window geometry')
+  }
   // Finished-while-away conversations mark the Dock tile through the standard
   // Badging API; the module no-ops where the webview does not implement it.
   ctx.effect(() => installTurnBadge(ctx), 'dsh-enhance: turn badge')
