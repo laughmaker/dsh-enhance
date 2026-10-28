@@ -59,8 +59,10 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
   vertical-align: 8px;
   cursor: pointer;
   /* The glyph floats over the passage: a soft cast shadow puts it in front of the
-     text instead of sitting flat in the line. */
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 42%));
+     text instead of sitting flat in the line. On white paper the dark-theme cast
+     read as a smudge under the disc, so the light theme gets the same lift at a
+     third of the weight. */
+  filter: drop-shadow(0 1px 2px rgb(15 17 21 / 22%));
   transition: transform 110ms ease, filter 110ms ease;
 }
 
@@ -74,6 +76,14 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
 
 .dsh-enhance-badge:hover {
   transform: scale(1.1);
+  filter: drop-shadow(0 2px 5px rgb(15 17 21 / 32%));
+}
+
+body[data-ds-dark-theme] .dsh-enhance-badge {
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 42%));
+}
+
+body[data-ds-dark-theme] .dsh-enhance-badge:hover {
   filter: drop-shadow(0 3px 6px rgb(0 0 0 / 52%));
 }
 
@@ -102,15 +112,22 @@ body[data-ds-dark-theme] ::highlight(dsh-enhance-annotation-mark) {
      horizontal padding, so text never touches the rounded corners. */
   padding: 0;
   border-radius: 18px;
-  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
-  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 76%, transparent);
-  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 40%);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  /* The app's real surface token, not a guessed name: --dsw-alias-bg-layer-1
+     is #fff on the light theme and #232324 on the dark one, so one rule covers
+     both. The light card stays nearly opaque — a translucent white over white
+     text has no edge at all — while the dark card keeps its glass. */
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 96%, transparent);
+  /* Hairline stroke + a low, soft cast: the theme's own elevation, which is far
+     quieter than a black 40% shadow and is what makes a white card sit on a
+     white page instead of dissolving into it. */
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgb(0 0 0 / 6%)), 0 12px 32px -14px rgb(15 17 21 / 20%);
   backdrop-filter: blur(24px) saturate(1.6);
   animation: dsh-enhance-pop-in 110ms cubic-bezier(.2, .8, .3, 1);
 }
 
 body[data-ds-dark-theme] .dsh-enhance-popover {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 70%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #1b1b1c) 70%, transparent);
   box-shadow: 0 20px 48px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
 }
 
@@ -173,13 +190,21 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
   border: 0;
   border-radius: 50%;
   background: var(--dsw-alias-label-primary);
-  color: var(--dsw-alias-bg-l1, #111);
+  /* The token that actually flips with the theme: white on light, #0f1115 on
+     dark. --dsw-alias-bg-l1 does not exist, so the glyph fell back to a
+     literal and only looked right by luck in one theme. */
+  color: var(--dsw-alias-label-primary-foreground);
   cursor: pointer;
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
+/* Nothing to confirm yet: a hairline ring with a muted check, not a filled disc
+   faded to 22%. On a white card the faded fill read as a grey blob with an
+   invisible glyph, which looks like a loading placeholder rather than a state. */
 .dsh-enhance-popover__confirm:disabled {
-  opacity: .22;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
   cursor: default;
 }
 
@@ -207,7 +232,9 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
 .dsh-enhance-popover__quote {
   min-width: 0;
   overflow: hidden;
-  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+  /* Secondary, not tertiary: the quote previews the passage under discussion, and
+     at 11px on a white card the tertiary grey was too faint to read at a glance. */
+  color: var(--dsw-alias-label-secondary);
   font-size: 11px;
   line-height: 15px;
   text-overflow: ellipsis;
@@ -262,13 +289,19 @@ body[data-ds-dark-theme] .dsh-enhance-popover {
   align-items: center;
   border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 10px;
-  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff));
-  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  /* The pill sits on the composer card, so it takes the raised layer rather than
+     the page colour: white-on-white on the light theme had no edge but its
+     hairline, and the card's own shadow is what does the lifting. */
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  box-shadow: var(--dsw-elevation-panel, 0 2px 8px rgb(0 0 0 / 8%));
   overflow: hidden;
 }
 
 body[data-ds-dark-theme] .dsh-enhance-tray__pill {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 94%, #fff 6%);
+  /* One step above the composer's own layer, so the pill still reads as raised
+     when both are dark. */
+  background: var(--dsw-alias-bg-layer-2, #2c2c2e);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
 }
 
 .dsh-enhance-tray__divider {
@@ -334,17 +367,17 @@ body[data-ds-dark-theme] .dsh-enhance-tray__pill {
   margin: 0;
   padding: 6px;
   list-style: none;
-  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 82%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 97%, transparent);
   backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 38%);
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgb(0 0 0 / 6%)), 0 18px 44px -18px rgb(15 17 21 / 24%);
   max-height: 260px;
   overflow-y: auto;
 }
 
 body[data-ds-dark-theme] .dsh-enhance-tray__list {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 82%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #2c2c2e) 94%, transparent);
   box-shadow: 0 16px 40px -12px rgb(0 0 0 / 58%);
 }
 
@@ -421,17 +454,20 @@ body[data-ds-dark-theme] .dsh-enhance-tray__list {
   border-radius: 999px;
   /* A solid pill, not a gradient: fading over text looked like a smudge, and the
      icons must stay readable on top of the note they cover. */
-  background: var(--dsw-alias-bg-elevated, #1b1b1c);
+  background: var(--dsw-alias-bg-layer-1, #fff);
   box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent),
-    0 2px 8px rgb(0 0 0 / 22%);
+    0 0 0 0.5px var(--dsw-alias-border-l3),
+    0 2px 8px rgb(15 17 21 / 18%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 110ms ease;
 }
 
 body[data-ds-dark-theme] .dsh-enhance-tray__actions {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 96%, #fff 4%);
+  background: var(--dsw-alias-bg-layer-2, #2c2c2e);
+  box-shadow:
+    0 0 0 0.5px var(--dsw-alias-border-l3),
+    0 2px 8px rgb(0 0 0 / 40%);
 }
 
 .dsh-enhance-tray__icon {
@@ -488,16 +524,16 @@ body[data-ds-dark-theme] .dsh-enhance-tray__actions {
   max-width: calc(100vw - 24px);
   gap: 2px;
   padding: 10px;
-  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 94%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 96%, transparent);
   backdrop-filter: blur(24px) saturate(1.5);
-  box-shadow: 0 18px 44px -14px rgb(0 0 0 / 46%);
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgb(0 0 0 / 6%)), 0 18px 44px -16px rgb(15 17 21 / 24%);
   animation: dsh-enhance-pop-in 100ms cubic-bezier(.2, .8, .3, 1);
 }
 
 body[data-ds-dark-theme] .dsh-enhance-edit {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 94%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #1b1b1c) 92%, transparent);
   box-shadow: 0 20px 48px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
 }
 
@@ -651,16 +687,16 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   max-width: calc(100vw - 24px);
   padding: 8px;
   gap: 6px;
-  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 92%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 96%, transparent);
   backdrop-filter: blur(24px) saturate(1.5);
-  box-shadow: 0 20px 48px -14px rgb(0 0 0 / 48%);
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgb(0 0 0 / 6%)), 0 20px 48px -16px rgb(15 17 21 / 24%);
   animation: dsh-enhance-pop-in 100ms cubic-bezier(.2, .8, .3, 1);
 }
 
 body[data-ds-dark-theme] .dsh-enhance-edit {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 92%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #1b1b1c) 92%, transparent);
   box-shadow: 0 22px 52px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
 }
 
@@ -795,15 +831,16 @@ body[data-ds-dark-theme] .dsh-enhance-edit {
   /* Flush like the selection popover: the field and the header sit on the
      dialog's own surface instead of inside a second inset frame. */
   padding: 0;
-  border: 0.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-l1, #fff)) 90%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 96%, transparent);
   backdrop-filter: blur(24px) saturate(1.5);
-  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 52%);
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgb(0 0 0 / 6%)), 0 24px 64px -18px rgb(15 17 21 / 26%);
 }
 
 body[data-ds-dark-theme] .dsh-enhance-edit {
-  background: color-mix(in srgb, var(--dsw-alias-bg-l1, #1b1b1c) 88%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #2c2c2e) 92%, transparent);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 62%), inset 0 0 0 0.5px rgb(255 255 255 / 7%);
 }
 
 /* Anchored variant: coordinates come from the badge, so the centring transform
