@@ -62,14 +62,21 @@ export const css = String.raw`/* Workspace rows: swap the folder icon for the di
 
 /* Dark mode: the app's label tokens resolve to near-white (label-primary #f9fafb,
    label-secondary #cfd3d6), which reads as glare against the dark sidebar surface.
-   Redefining the two tokens inside the sidebar subtree dims only its text; the centre
-   column, the right panel and the app's own dark palette keep their values. Measured
-   against the dark sidebar surface this takes label-primary from ~16.6:1 to ~11:1 and
-   label-secondary from ~11.5:1 to ~7.3:1, so both stay above WCAG AA. The variable
-   override needs no !important: every rule above resolves through these tokens. */
+   Redefining the tokens inside the sidebar subtree dims only its text; the centre
+   column, the right panel and the app's own dark palette keep their values.
+
+   Measured live against the dark sidebar (#1b1b1c): titles and workspace names
+   paint through label-primary, section headings and timestamps through
+   label-secondary, and the overflow row ("Show N more sessions") plus the
+   running-status slot through label-tertiary. All three move down one step
+   together, so the whole column dims evenly instead of one row staying bright.
+   Against that surface the step lands at about 9.2:1, 6.2:1 and 6.7:1, all
+   still above WCAG AA. The variable override needs no !important: the rules
+   above, and the host's own rows, resolve through these tokens. */
 body[data-ds-dark-theme] [class*="sidebarCol"] {
-  --dsw-alias-label-primary: #c9ced6;
-  --dsw-alias-label-secondary: #a2a8b0;
+  --dsw-alias-label-primary: #bbc0c8;
+  --dsw-alias-label-secondary: #949aa2;
+  --dsw-alias-label-tertiary: #9fa4aa;
 }
 
 /* Text scale for a sidebar this plugin allows to be much narrower than upstream's
