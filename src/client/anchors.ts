@@ -550,3 +550,32 @@ export function removeBadges(): void {
     parent?.normalize()
   }
 }
+
+/**
+ * Remove the badges one owner mounted, leaving every other owner's in place.
+ *
+ * Two composers can be on screen at once — the main conversation and a side
+ * chat tab — and each mounts markers for the passages it quotes. A global sweep
+ * from one of them deletes the other's markers, the other re-mounts them, and
+ * the two take turns writing the same subtree on every mutation. That is a
+ * self-feeding loop with no end: it never yields, so the window stops painting
+ * and every click is lost. Teardown is therefore keyed to the ids this owner
+ * actually put on screen.
+ * @param ids - annotation ids whose badges belong to the caller.
+ * @returns how many badges were removed.
+ */
+export function unmountBadges(ids: Iterable<string>): number {
+  const owned = new Set(ids)
+  if (owned.size === 0) return 0
+  let removed = 0
+  for (const anchor of [...document.querySelectorAll('[data-dsh-enhance-badge-anchor]')]) {
+    const badge = anchor.querySelector(`[${BADGE_ATTRIBUTE}]`)
+    const id = badge?.getAttribute(BADGE_ATTRIBUTE)
+    if (id === null || id === undefined || !owned.has(id)) continue
+    const parent = anchor.parentNode
+    anchor.remove()
+    parent?.normalize()
+    removed += 1
+  }
+  return removed
+}

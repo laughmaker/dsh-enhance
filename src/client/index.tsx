@@ -27,6 +27,12 @@ import { LOCALE_NS, en, zh } from './locales.ts'
 
 /** The one side conversation this page opens; later requests add to it. */
 let openSideChat: SessionId | undefined
+
+/**
+ * The open that is in flight, so a second click joins it instead of creating a
+ * second conversation (a created-but-unused session is never reclaimed).
+ */
+let openingSideChat: Promise<void> | undefined
 import { AnnotationSeat, type AnnotationSeatInjected } from './AnnotationSeat.tsx'
 import { addAnnotation, type AnnotationAnchor } from './annotations.ts'
 import { registerSideChat, rememberTitle, sideChatAddress } from './side-chat.ts'
@@ -96,21 +102,38 @@ export function apply(ctx: Context): void {
     sourceSessionId?: string,
     anchor?: AnnotationAnchor,
   ): Promise<void> => {
-    const workspaceId = ctx.workspaces.list.getSnapshot().items[0]?.workspaceId
-    if (workspaceId === undefined) throw new Error(t('error.noWorkspace'))
-    const sessionId = sideChatSession()
-      ?? (await createSideChatSession(ctx, workspaceId))
-    // Reuse the open tab: every request lands in the same side conversation, so a
-    // second "Ask in side chat" adds to the panel that is already on screen
-    // instead of stacking a new tab per click.
-    rememberTitle(sessionId, firstLine(passage))
-    // Filed under the side conversation, but pinned in the transcript it quotes:
-    // the reader selected these words here, so the pin stays here.
-    addAnnotation(sessionId, passage, note, anchor, sourceSessionId)
-    // The tab owns the retained conversation, so opening it is what mounts the
-    // composer the annotation pill renders into. `revealIfOpened` (the default)
-    // focuses the existing tab for this address rather than duplicating it.
-    ctx.sidebarRight.openResource(sideChatAddress(sessionId))
+    // One open at a time: the panel takes a round trip to appear, and a second
+    // click during it would create a conversation nobody ever looks at.
+    if (openingSideChat !== undefined) {
+      await openingSideChat
+      return
+    }
+    const work = (async (): Promise<void> => {
+      // The conversation belongs where the passage was read. Creating it in
+      // some other workspace moves the session list under the reader and makes
+      // the sidebar open a conversation from a workspace that is not on screen.
+      const workspaceId = workspaceFor(ctx, sourceSessionId)
+      if (workspaceId === undefined) throw new Error(t('error.noWorkspace'))
+      const sessionId = sideChatSession()
+        ?? (await createSideChatSession(ctx, workspaceId))
+      // Reuse the open tab: every request lands in the same side conversation, so a
+      // second "Ask in side chat" adds to the panel that is already on screen
+      // instead of stacking a new tab per click.
+      rememberTitle(sessionId, firstLine(passage))
+      // Filed under the side conversation, but pinned in the transcript it quotes:
+      // the reader selected these words here, so the pin stays here.
+      addAnnotation(sessionId, passage, note, anchor, sourceSessionId)
+      // The tab owns the retained conversation, so opening it is what mounts the
+      // composer the annotation pill renders into. `revealIfOpened` (the default)
+      // focuses the existing tab for this address rather than duplicating it.
+      ctx.sidebarRight.openResource(sideChatAddress(sessionId))
+    })()
+    openingSideChat = work
+    try {
+      await work
+    } finally {
+      if (openingSideChat === work) openingSideChat = undefined
+    }
   }
 
   // The seat lives on the composer's overlay anchor: it renders the annotation
@@ -123,6 +146,26 @@ export function apply(ctx: Context): void {
     locale: LOCALE_NS,
     inject: (): AnnotationSeatInjected => ({ askInSideChat }),
   }, AnnotationSeat)), 'dsh-enhance: annotation seat')
+}
+
+/**
+ * The workspace a side conversation for one passage belongs in.
+ *
+ * A Workspace is the container a session is listed under; the reader asked from
+ * a conversation, so that conversation's own workspace is the answer. Falling
+ * back to the first workspace keeps the gesture working before the list has
+ * loaded.
+ * @param ctx - client root carrying the Workspace list.
+ * @param sourceSessionId - conversation the passage was selected in.
+ * @returns the workspace to create the side conversation in.
+ */
+function workspaceFor(ctx: Context, sourceSessionId?: string): WorkspaceId | undefined {
+  const items = ctx.workspaces.list.getSnapshot().items
+  if (sourceSessionId !== undefined) {
+    const owner = items.find(item => item.sessionIds?.includes(sourceSessionId) === true)
+    if (owner !== undefined) return owner.workspaceId
+  }
+  return items[0]?.workspaceId
 }
 
 /**

@@ -28,7 +28,7 @@ import {
   removeAnnotation, subscribeAnnotations, updateAnnotationNote, type Annotation,
   type AnnotationAnchor,
 } from './annotations.ts'
-import { anchorForRange, clearHighlight, clearMarks, highlightAnnotation, mountBadges, paintMarks, removeBadges } from './anchors.ts'
+import { anchorForRange, clearHighlight, clearMarks, highlightAnnotation, mountBadges, paintMarks, unmountBadges } from './anchors.ts'
 import { AnnotationTray } from './AnnotationTray.tsx'
 
 /** Owner face the composer seat is registered with. */
@@ -99,6 +99,18 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
       if (target !== undefined) highlightAnnotation(target)
       setEditingId(id)
     }
+    /**
+     * Badges this seat put on screen.
+     *
+     * A second composer can be mounted at the same time — `Ask in side chat`
+     * opens a tab whose seat marks the same transcript — and a teardown that
+     * swept every badge in the document would delete the other seat's markers,
+     * which the other seat then re-mounted, which fired this seat's observer
+     * again. Two owners taking turns writing one subtree never yields: the page
+     * stops painting entirely, which is what a frozen window looks like.
+     */
+    const owned = new Set<string>()
+
     /** Repaint marks and badges; idempotent, so calling it twice costs nothing. */
     const repaint = (): void => {
       // Marks follow the transcript being displayed, not the owning composer:
@@ -106,6 +118,8 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
       const pinned = annotationsVisibleIn(sessionId)
       paintMarks(sessionId, pinned)
       mountBadges(pinned, onClick)
+      owned.clear()
+      for (const annotation of pinned) owned.add(annotation.id)
     }
     repaint()
     // Observe the whole document rather than one transcript element.
@@ -122,30 +136,62 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
     // The observer must never react to this plugin's own DOM writes: mounting a
     // badge inserts a node and splits a text node, which the observer sees, and
     // re-entering the mount from its own callback froze the whole page. Records
-    // that are only this plugin's badges are therefore skipped, and the repaint
-    // runs in a microtask so a burst of React updates costs one pass.
-    let queued = false
+    // that are only this plugin's badges — or only text nodes in a parent that
+    // holds one, which is what a split or a `normalize()` looks like — are
+    // therefore skipped.
     const isOwnMutation = (record: MutationRecord): boolean => {
       const touch = [...record.addedNodes, ...record.removedNodes]
-      return touch.length > 0 && touch.every((node) => {
-        if (!(node instanceof Element)) return false
-        return node.matches('[data-dsh-enhance-badge], [data-dsh-enhance-badge-anchor]')
-          || node.querySelector('[data-dsh-enhance-badge]') !== null
+      if (touch.length === 0) return false
+      const parent = record.target instanceof Element
+        ? record.target
+        : record.target.parentElement
+      const holdsBadge = parent?.querySelector('[data-dsh-enhance-badge-anchor]') != null
+      return touch.every((node) => {
+        if (node instanceof Element) {
+          return node.matches('[data-dsh-enhance-badge], [data-dsh-enhance-badge-anchor]')
+            || node.querySelector('[data-dsh-enhance-badge]') !== null
+        }
+        // A text node beside a badge is this plugin's own split or re-join.
+        return holdsBadge && node.nodeType === Node.TEXT_NODE
+      })
+    }
+
+    // One repaint per animation frame, and a hard ceiling on how many frames in
+    // a row may repaint. A microtask-coalesced pass still turns a self-feeding
+    // mutation into a tight loop that never yields to the compositor — the app
+    // stops painting while the main thread spins. A frame boundary always
+    // yields, so even a pathological mutation storm costs at most one pass per
+    // frame; the ceiling is the escape hatch that keeps the page alive if
+    // something outside this plugin keeps re-triggering it.
+    const MAX_REPAINTS_PER_SECOND = 30
+    let frame = 0
+    let windowStart = 0
+    let windowCount = 0
+    const schedule = (): void => {
+      if (frame !== 0) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const now = performance.now()
+        if (now - windowStart > 1000) {
+          windowStart = now
+          windowCount = 0
+        }
+        windowCount += 1
+        if (windowCount > MAX_REPAINTS_PER_SECOND) return
+        repaint()
       })
     }
     const observer = new MutationObserver((records) => {
       if (records.every(isOwnMutation)) return
-      if (queued) return
-      queued = true
-      queueMicrotask(() => {
-        queued = false
-        repaint()
-      })
+      schedule()
     })
     observer.observe(scope, { childList: true, subtree: true })
     return () => {
       observer.disconnect()
-      removeBadges()
+      if (frame !== 0) cancelAnimationFrame(frame)
+      // Only this seat's own markers: the other composer's seat is still live
+      // and owns its badges.
+      unmountBadges(owned)
       clearHighlight()
       clearMarks(sessionId)
     }
