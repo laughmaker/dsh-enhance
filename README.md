@@ -20,7 +20,7 @@ DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、�
 - **启动即最窄** — 首次启动侧栏直接是 214px（上游每次加载都回到 280px），之后按你上次拖到的宽度打开。折叠/展开不会丢掉这个宽度。
 - **窗口铺满屏幕** — 首次启动主窗口铺满可用区域（菜单栏与 Dock 保留，等同绿色按钮的缩放）；之后按上次关闭时的窗口位置与大小重新打开。保存的窗口若超出当前显示器（换屏、改分辨率）会被拉回可见区域。
 - **运行中彩色转圈** — 侧栏里正在运行的会话，状态环不再是宿主那样的灰色，而是一圈彩色：蓝→紫→洋红→琥珀的 4 秒色相循环，浅色与深色主题下都清晰。环的转动与虚线段仍由宿主驱动，本插件只改颜色；其他位置的状态点（任务、审批、工作流）保持原样。
-- **Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏「绿点未读会话」的数量：某会话跑完而你没在看它（切到别的会话或别的 App）就 +1，点开读一下即 -1，全部读完角标消失。直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源），走标准 Badging API（`navigator.setAppBadge`），宿主不支持时静默降级。
+- **Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏「绿点未读会话」的数量：某会话跑完而你没在看它（切到别的会话或别的 App）就 +1，点开读一下即 -1，全部读完角标消失。直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源）。页面侧把数字报到插件自己的 Host 路由 `/dsh-enhance/badge`，由主进程 `app.dock.setBadge` 画角标——Electron 渲染层不实现 Badging API，之前走 `navigator.setAppBadge` 是空操作；普通浏览器里仍保留 Badging API 作为备选。
 
 ## 安装
 
@@ -110,7 +110,8 @@ npx pnpm@11.28.5 remove dsh-enhance
 | `src/client/sidebar-floor.ts` | 侧栏拖拽下限（264 → 214）、启动宽度应用与拖拽落定回调 |
 | `src/client/sidebar-width.ts` | 记住侧栏宽度（首次 214，之后按上次拖到的值） |
 | `src/client/window-geometry.ts` | 窗口几何：首次铺满可用区域，之后恢复上次的窗口位置与大小 |
-| `src/client/turn-badge.ts` | Dock 未读会话角标（映射宿主 completionUnread） |
+| `src/client/turn-badge.ts` | Dock 未读会话角标（映射宿主 completionUnread，报到 Host 路由） |
+| `src/index.ts` | Host 半边：`/dsh-enhance/badge` 路由，主进程画 Dock 角标 |
 | `src/client/side-chat.ts` | 侧栏对话资源与标签页 |
 | `src/client/styles/` | 各样式表（每个文件导出一个 `String.raw` 模板）；`running-spinner.ts` 负责侧栏运行中色环 |
 | `lib/` | 构建产物，即 `npm pack` 打包内容 |

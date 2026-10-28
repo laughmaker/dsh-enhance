@@ -32,6 +32,9 @@ export default [
     target: 'es2022',
     dts: false,
     clean: true,
+    // Electron is the Host itself, not a dependency: only the desktop shell can
+    // resolve it, and the import is made at call time behind a try/catch.
+    external: ['electron'],
     outputOptions: { entryFileNames: 'index.js' },
   },
   {

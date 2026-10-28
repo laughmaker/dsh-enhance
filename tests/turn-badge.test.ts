@@ -4,12 +4,11 @@
  * Run with the DSH checkout's vitest binary:
  *   node_modules/.bin/vitest run tests
  */
-// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import {
   installTurnBadge, unreadVisibleIds,
-  type BadgeLike, type BadgeSessionRow, type BadgeStatus, type BadgeStatusStore,
+  type AttentionSource, type BadgeLike, type BadgeSessionRow, type BadgeStatus, type BadgeStatusStore,
 } from '../src/client/turn-badge.ts'
 
 const row = (over: Partial<BadgeSessionRow> = {}): BadgeSessionRow => ({ ...over })
@@ -41,6 +40,8 @@ interface Harness {
   emitStatus(): void
   setBadge: ReturnType<typeof vi.fn>
   clearBadge: ReturnType<typeof vi.fn>
+  paintHost: ReturnType<typeof vi.fn>
+  setFocused: (focused: boolean) => void
   dispose: () => void
 }
 
@@ -69,8 +70,18 @@ function mount(initial: Record<string, BadgeSessionRow>, initialStatus = new Map
   } as unknown as Context
   const setBadge = vi.fn().mockResolvedValue(undefined)
   const clearBadge = vi.fn().mockResolvedValue(undefined)
+  const paintHost = vi.fn()
+  const focusListeners = new Set<() => void>()
+  let focused = true
+  const attention: AttentionSource = {
+    focused: () => focused,
+    subscribe: (listener) => {
+      focusListeners.add(listener)
+      return () => void focusListeners.delete(listener)
+    },
+  }
   const badge: BadgeLike = { set: setBadge, clear: clearBadge }
-  const dispose = installTurnBadge(ctx, { badge, statusSource: statusStore })
+  const dispose = installTurnBadge(ctx, { badge, statusSource: statusStore, paintHost, attention })
   return {
     setRows: (next) => {
       rows = next
@@ -82,6 +93,11 @@ function mount(initial: Record<string, BadgeSessionRow>, initialStatus = new Map
     emitStatus: () => statusListeners.forEach((listener) => listener()),
     setBadge,
     clearBadge,
+    paintHost,
+    setFocused: (next) => {
+      focused = next
+      focusListeners.forEach((listener) => listener())
+    },
     dispose,
   }
 }
@@ -93,6 +109,7 @@ describe('installTurnBadge', () => {
       new Map([['a', { completionUnread: true }], ['b', { completionUnread: true }]]),
     )
     expect(h.setBadge).toHaveBeenCalledWith(2)
+    expect(h.paintHost).toHaveBeenLastCalledWith(2)
     h.dispose()
   })
 
@@ -140,6 +157,63 @@ describe('installTurnBadge', () => {
     h.emitList()
     expect(h.setBadge).toHaveBeenCalledTimes(1)
     h.dispose()
+  })
+
+  it('counts a completion that landed while the window was in the background', () => {
+    // The Host marks a finish unread only when its session is NOT the one on
+    // screen, so a turn finishing behind another app needs this module's own mark.
+    const h = mount({ a: row({ running: true }) as BadgeSessionRow })
+    expect(h.paintHost).toHaveBeenLastCalledWith(0)
+    h.setFocused(false)
+    h.setRows({ a: row({ running: false }) as BadgeSessionRow })
+    h.emitList()
+    expect(h.paintHost).toHaveBeenLastCalledWith(1)
+    expect(h.setBadge).toHaveBeenLastCalledWith(1)
+    h.dispose()
+  })
+
+  it('drops the background mark when the reader returns to the window', () => {
+    const h = mount({ a: row({ running: true }) as BadgeSessionRow })
+    h.setFocused(false)
+    h.setRows({ a: row({ running: false }) as BadgeSessionRow })
+    h.emitList()
+    expect(h.paintHost).toHaveBeenLastCalledWith(1)
+    h.setFocused(true)
+    expect(h.paintHost).toHaveBeenLastCalledWith(0)
+    h.dispose()
+  })
+
+  it('does not count a completion that finished in front of the reader', () => {
+    const h = mount({ a: row({ running: true }) as BadgeSessionRow })
+    h.setRows({ a: row({ running: false }) as BadgeSessionRow })
+    h.emitList()
+    expect(h.paintHost).toHaveBeenLastCalledWith(0)
+    h.dispose()
+  })
+
+  it('reports to the Host even when the page has no Badging API', () => {
+    let rows = { a: row() }
+    let status = new Map<string, BadgeStatus>([['a', { completionUnread: true }]])
+    const statusListeners = new Set<() => void>()
+    const ctx = {
+      sessions: { list: { getSnapshot: () => ({ byId: rows }), subscribe: () => () => {} } },
+    } as unknown as Context
+    const paintHost = vi.fn()
+    const statusStore: BadgeStatusStore = {
+      getSnapshot: () => status,
+      subscribe: (listener) => {
+        statusListeners.add(listener)
+        return () => void statusListeners.delete(listener)
+      },
+    }
+    // Electron's renderer has no Badging API; the Host route is the only path.
+    const dispose = installTurnBadge(ctx, { badge: undefined, statusSource: statusStore, paintHost })
+    expect(paintHost).toHaveBeenLastCalledWith(1)
+    status = new Map([['a', { completionUnread: false }]])
+    statusListeners.forEach((listener) => listener())
+    expect(paintHost).toHaveBeenLastCalledWith(0)
+    rows = {}
+    dispose()
   })
 
   it('no-ops without a Badging API and never subscribes', () => {
