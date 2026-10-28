@@ -31,9 +31,9 @@ DSH 打开 **Plugins** 页面 → 添加插件 → 输入 `dsh-enhance` → 安�
 ### 方式二：本地 tar 包
 
 ```bash
-# 从 Releases 下载 dsh-enhance-0.3.2.tgz 后
+# 从 Releases 下载 dsh-enhance-0.3.3.tgz 后
 cd ~/.dsh/profiles/desktop
-npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.3.2.tgz"
+npx pnpm@11.28.5 add "file:/绝对路径/dsh-enhance-0.3.3.tgz"
 ```
 
 再编辑 `~/.dsh/profiles/desktop/package.json`，把 `dsh-enhance` 加入 `dsh.profile.bundles`：
