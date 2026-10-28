@@ -16,6 +16,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SHEETS } from '../src/client/styles.ts'
+import { ENTRIES_ATTRIBUTE } from '../src/client/sidebar-top-row.ts'
 
 const STYLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'client', 'styles')
 
@@ -87,5 +88,29 @@ describe('registered sheets', () => {
     expect(css).toContain('color:')
     expect(css).not.toMatch(/stroke:[^;]*!important/)
     expect(css).toContain('prefers-reduced-motion')
+  })
+
+  it('keeps the top row at five icons per line', () => {
+    const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
+    // The cap is arithmetic, not a guess: five 36px buttons and four 2px gaps.
+    expect(css).toContain('max-width: calc(36px * 5 + 2px * 4)')
+    expect(css).toContain('flex-wrap: wrap')
+  })
+
+  it('merges the relocated footer actions with the marker the module sets', () => {
+    const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
+    // The stylesheet keys off the attribute the module writes; a rename on one
+    // side only would leave the icons unstyled in the footer.
+    expect(css).toContain(`[${ENTRIES_ATTRIBUTE}]`)
+    expect(css).toContain('display: contents')
+  })
+
+  it('centres a relocated plugin icon instead of the plugin\'s wide pill layout', () => {
+    const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
+    // A plugin that styles its trigger for the footer row sets flex-start and a
+    // gap; left alone, the icon sits against the left edge of the 36px square.
+    const rule = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button \\{[^}]*justify-content: center`)
+    expect(css).toMatch(rule)
+    expect(css).toMatch(new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button \\{[^}]*gap: 0`))
   })
 })
