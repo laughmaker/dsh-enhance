@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import { TOOLBAR_ATTRIBUTE, captureSelection, placeToolbar, type CapturedSelection } from './selection.ts'
+import { TOOLBAR_ATTRIBUTE, captureSelection, copyTextFor, placeToolbar, type CapturedSelection } from './selection.ts'
 import { anchorForRange } from './anchors.ts'
 import type { AnnotationAnchor } from './annotations.ts'
 
@@ -133,6 +133,22 @@ export function SelectionToolbar({
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') dismiss()
     }
+    /**
+     * Keep Cmd/Ctrl+C working on the passage the popover just took focus from.
+     *
+     * The popover focuses the note field as it opens, which moves the document
+     * selection into that field — a copy then finds an empty box and the reader
+     * loses the words they highlighted. While the field holds no selection of
+     * its own, the copy is answered with the marked passage instead; a selection
+     * made inside the field still goes through the browser's own copy.
+     */
+    const onCopy = (event: ClipboardEvent): void => {
+      if (event.defaultPrevented) return
+      const text = copyTextFor(latest.current?.text, input.current)
+      if (text === undefined) return
+      event.clipboardData?.setData('text/plain', text)
+      event.preventDefault()
+    }
     const onScroll = (event: Event): void => {
       if (isInsidePopover(event.target)) return
       dismiss()
@@ -140,12 +156,14 @@ export function SelectionToolbar({
     for (const name of SETTLE_EVENTS) document.addEventListener(name, settle, true)
     document.addEventListener('selectionchange', onChange)
     document.addEventListener('keydown', onKey, true)
+    document.addEventListener('copy', onCopy)
     window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', dismiss)
     return () => {
       for (const name of SETTLE_EVENTS) document.removeEventListener(name, settle, true)
       document.removeEventListener('selectionchange', onChange)
       document.removeEventListener('keydown', onKey, true)
+      document.removeEventListener('copy', onCopy)
       window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', dismiss)
     }

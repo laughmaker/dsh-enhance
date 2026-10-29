@@ -122,6 +122,27 @@ export function quotedBlock(text: string): string {
 }
 
 /**
+ * Text the copy shortcut should carry while the annotation popover is open.
+ *
+ * Opening the popover focuses the note field, and focusing a field takes the
+ * document selection with it: Cmd+C then copies an empty box instead of the
+ * words the reader just highlighted. So while the field holds no selection of
+ * its own, the copy carries the marked passage; the moment the reader selects
+ * text inside the field, the native copy is the one they asked for.
+ * @param passage - the marked passage, when the popover is showing one.
+ * @param field - the note field, once the popover has rendered it.
+ * @returns text to write to the clipboard, or undefined to leave the copy alone.
+ */
+export function copyTextFor(
+  passage: string | undefined,
+  field: { readonly selectionStart: number | null; readonly selectionEnd: number | null } | null,
+): string | undefined {
+  if (passage === undefined || passage.length === 0) return undefined
+  if (field !== null && field.selectionStart !== field.selectionEnd) return undefined
+  return passage
+}
+
+/**
  * Place a `width`-wide box below (or above) an anchor rect, clamped into the viewport.
  * @param anchor - the selection rectangle.
  * @param width - toolbar width in CSS pixels.
