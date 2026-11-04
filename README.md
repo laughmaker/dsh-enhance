@@ -1,6 +1,6 @@
 # dsh-enhance
 
-DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、侧栏更窄、启动默认状态。
+DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、文件右键菜单、侧栏更窄、启动默认状态。
 
 ## 功能
 
@@ -14,6 +14,7 @@ DeepSeek Harness（DSH）增强插件：Markdown 主题统一、划词批注、�
   - 有批注挂起时发送按钮即刻可用，而输入框保持空白；发送瞬间才把引文拼进消息
   - 弹窗输入框无内边距、贴合面板，高度随内容自动增长且不出现滚动条
 - **侧栏提问** — 从同一面板把段落送到右侧栏的侧边对话，不打断当前对话。首次创建，之后复用同一标签页。
+- **文件右键菜单** — 在对话消息里的文件链接（含行内代码形式的文件引用）上右键，弹出跟随深浅主题的菜单：用默认应用打开、打开方式（列出系统为该登记的应用）、另存为、复制路径、复制文件内容、在 Finder 中显示。打开/打开方式/Finder 定位走宿主 `ctx.remote.session.openWorkspacePath`，应用清单走 `workspacePathApplications`，读取内容走鉴权路由 `GET /api/file?path=`。路径取文件链接的 `title`，相对路径按当前会话 `cwd` 补全；另存为从 `/api/file` 取得字节后优先调用 `showSaveFilePicker`，不支持时退化为浏览器下载（DSH 未提供原生保存对话框）。菜单只在会话正文内拦截右键，其它位置保留宿主原生菜单；点击别处、滚动、Esc、失焦、窗口缩放都会关闭它。
 - **侧栏更窄** — 侧栏可拖到 214px（上游限制 264px），文字相应缩小一档；文件夹图标换成展开/收起三角，文件夹标题与会话标题同字号、左端对齐。
 - **面板图标置顶** — Plugins / 自动化等面板图标移到侧栏顶部、工作区列表之上，并排成一行；每行最多 5 个，超出换行。上游是带文字的竖排列表，此前本插件把它放在右下角。只改位置与排版，宿主的选中态、悬停态和那个「更多」菜单都照旧。
 - **插件图标也置顶** — 新装的插件如果把图标注册到侧栏底部（`sidebar.footer.action`，比如「远程访问」的电话图标），它的按钮会被搬进同一行顶部列表，同样按 5 个一行、超出换行。搬的是宿主自己的容器而不是插件的按钮，所以插件自己的选中态、悬停态和弹层都照常工作；折叠成图标轨时交回宿主布局。
@@ -113,6 +114,8 @@ npx pnpm@11.28.5 remove dsh-enhance
 | `src/client/turn-badge.ts` | Dock 未读会话角标（映射宿主 completionUnread，报到 Host 路由） |
 | `src/index.ts` | Host 半边：`/dsh-enhance/badge` 路由，主进程画 Dock 角标 |
 | `src/client/side-chat.ts` | 侧栏对话资源与标签页 |
+| `src/client/file-menu.ts` | 会话内文件链接的右键菜单：路径解析、菜单与子菜单、六个动作 |
+| `src/client/styles/file-menu.ts` | 右键菜单与结果提示的样式表 |
 | `src/client/styles/` | 各样式表（每个文件导出一个 `String.raw` 模板）；`running-spinner.ts` 负责侧栏运行中色环 |
 | `lib/` | 构建产物，即 `npm pack` 打包内容 |
 

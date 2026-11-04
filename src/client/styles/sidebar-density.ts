@@ -109,6 +109,16 @@ body[data-ds-dark-theme] [class*="sidebarCol"] {
   line-height: 16px !important;
 }
 
+/* Session-row timestamps sit two steps below the row's 12px type scale.
+   The blanket span rule above also catches the trailing time span, which the
+   app itself renders at 10px; without this it is promoted to 12px and reads as
+   a second title. Four attribute selectors outrank that rule's three plus the
+   element, so the cascade does not depend on sheet load order. */
+[class*="sidebarCol"] [role="treeitem"][data-row-key^="session:"] [class*="_time"] {
+  font-size: 10px !important;
+  line-height: 16px !important;
+}
+
 [class*="sidebarCol"] [class*="brandName"] {
   font-size: 16px !important;
 }

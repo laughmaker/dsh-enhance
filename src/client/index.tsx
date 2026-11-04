@@ -1,10 +1,11 @@
 /**
  * dsh-enhance browser half.
  *
- * Two responsibilities, both owned by this plugin's fiber:
+ * Three responsibilities, all owned by this plugin's fiber:
  * 1. global presentation migrated out of the installer's injected styles;
  * 2. the transcript selection toolbar — carry a passage into the current draft,
- *    or open a side conversation seeded with it.
+ *    or open a side conversation seeded with it;
+ * 3. the right-click menu on file mentions in chat messages.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -23,6 +24,7 @@ import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
 import { installTurnBadge } from './turn-badge.ts'
+import { installFileMenu } from './file-menu.ts'
 import { LOCALE_NS, en, zh } from './locales.ts'
 
 /** The one side conversation this page opens; later requests add to it. */
@@ -44,8 +46,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Required services: slots, dictionaries, session status, the Workspace list, and the right Sidebar. */
-export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs']
+/** Required services: slots, dictionaries, the Session Remote, session status, the Workspace list, and the right Sidebar. */
+export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs', 'remote', 'remote.session']
 
 /**
  * Mount the plugin.
@@ -55,6 +57,7 @@ export function apply(ctx: Context): void {
   const t: TranslateNS<typeof LOCALE_NS> = ctx.locale.bind(LOCALE_NS)
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
+  ctx.effect(() => installFileMenu(ctx, t), 'dsh-enhance: file context menu')
   // The sidebar's minimum width is a module constant in the layout package, so the
   // drag gesture is taken over to allow 50px below it. The same module opens the
   // column at its narrowest on a first run, then at whatever width the reader left

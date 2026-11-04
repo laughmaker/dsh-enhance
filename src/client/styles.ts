@@ -7,6 +7,7 @@ import { css as runningSpinner } from './styles/running-spinner.ts'
 import { css as sidebarDensity } from './styles/sidebar-density.ts'
 import { css as sidebarLayout } from './styles/sidebar-layout.ts'
 import { css as toolbar } from './styles/toolbar.ts'
+import { css as fileMenu } from './styles/file-menu.ts'
 
 /** Stable plugin identity stamped onto every injected style tag. */
 export const PLUGIN_ID = 'dsh-enhance'
@@ -20,6 +21,7 @@ export const SHEETS: readonly (readonly [string, string])[] = [
   ['sidebar-density.css', sidebarDensity],
   ['sidebar-layout.css', sidebarLayout],
   ['toolbar.css', toolbar],
+  ['file-menu.css', fileMenu],
 ]
 
 /**
