@@ -1,17 +1,18 @@
 /**
- * Right-click menu on file references inside conversation messages.
+ * Right-click menu on conversation content: file references and web links.
  *
  * The app renders a file mention as a button whose `title` carries the path
- * (both the markdown-link form and the inline-code form do this). A delegated
- * `contextmenu` listener catches those buttons, suppresses the native menu and
- * shows this plugin's own menu with the six actions from the reference design.
- * Everything else in the document keeps the app's native menu.
+ * (both the markdown-link form and the inline-code form do this), and an HTTP(S)
+ * link as an ordinary anchor. A delegated `contextmenu` listener catches both,
+ * suppresses the native menu and shows this plugin's own menu with the actions
+ * from the reference designs. Everything else keeps the app's native menu.
  *
- * Native actions use the Session Remote the app itself uses for file previews:
+ * File actions use the Session Remote the app itself uses for file previews:
  * `openWorkspacePath` opens/reveals/launches, `workspacePathApplications` lists
  * the "Open with" handlers, and the authenticated `api/file` route serves the
- * bytes for copy and Save As. No Host-side route is added, so the whole feature
- * lives in the browser bundle and reloads with the plugin.
+ * bytes for copy and Save As. Link actions are browser gestures (`window.open`,
+ * clipboard, fetch). No Host-side route is added, so the whole feature lives in
+ * the browser bundle and reloads with the plugin.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
@@ -20,6 +21,9 @@ import { LOCALE_NS } from './locales.ts'
 
 /** Hashed CSS-module classes still contain these stable substrings. */
 export const FILE_MENTION_SELECTOR = 'button[class*="fileMention"][title], button[class*="fileLink"][title]'
+
+/** Web links rendered inside chat messages (file mentions are buttons, not anchors). */
+export const WEB_LINK_SELECTOR = 'a[href]'
 
 /** A file mention counts only inside rendered chat content. */
 export const TRANSCRIPT_ROOT_SELECTOR = `${CHAT_NODE_SELECTOR}, ${ASSISTANT_FLOW_SELECTOR}, [class*="_markdown"]`
@@ -32,6 +36,10 @@ const MENU_WIDTH = 248
 const MENU_HEIGHT = 268
 const SUBMENU_WIDTH = 210
 const SUBMENU_ROW = 30
+
+/** Link menu footprint: header, three open rows, a separator, two copy/save rows. */
+const LINK_MENU_WIDTH = 232
+const LINK_MENU_HEIGHT = 292
 
 /** One native-open request as the Session Remote accepts it. */
 export interface OpenPathRequest {
@@ -183,6 +191,37 @@ export function fileTargetFrom(node: Node | null): HTMLElement | undefined {
   if (!(mention instanceof HTMLElement)) return undefined
   if (mention.closest(TRANSCRIPT_ROOT_SELECTOR) === null) return undefined
   return mention
+}
+
+/**
+ * Accept an HTTP(S) URL and nothing else.
+ * @param href - raw href attribute.
+ * @returns the URL string, or undefined for other schemes or empties.
+ */
+export function normalizeWebLink(href: string): string | undefined {
+  const value = href.trim()
+  if (!/^https?:\/\//i.test(value)) return undefined
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Find the web link a context-menu event landed on.
+ * @param node - event target.
+ * @returns the link URL, or undefined for non-links, other schemes, or outside chat.
+ */
+export function webLinkFrom(node: Node | null): { anchor: HTMLAnchorElement; url: string } | undefined {
+  const element = node instanceof Element ? node : node?.parentElement ?? undefined
+  if (element === undefined) return undefined
+  const anchor = element.closest(WEB_LINK_SELECTOR)
+  if (!(anchor instanceof HTMLAnchorElement)) return undefined
+  if (anchor.closest(TRANSCRIPT_ROOT_SELECTOR) === null) return undefined
+  const url = normalizeWebLink(anchor.getAttribute('href') ?? '')
+  return url === undefined ? undefined : { anchor, url }
 }
 
 /**
@@ -494,22 +533,135 @@ export function installFileMenu(ctx: Context, t: MenuText, deps: FileMenuDeps = 
     void loadApps()
   }
 
-  /** The gesture: only file mentions inside chat content are claimed. */
+  /** Open a web link in the app's in-app browser tab when one exists. */
+  const openLinkInTab = (url: string): string => {
+    const tabs = (ctx as unknown as {
+      sidebarRightTabs?: { get?: (id: string) => unknown }
+    }).sidebarRightTabs
+    const right = (ctx as unknown as {
+      sidebarRight?: { openTab?: (id: string, options: unknown) => void }
+    }).sidebarRight
+    if (tabs?.get?.('browser') !== undefined && typeof right?.openTab === 'function') {
+      right.openTab('browser', { params: { url } })
+      return t('linkMenu.done.opened')
+    }
+    // No in-app browser: a new window/tab is the closest equivalent.
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return ''
+  }
+
+  /** Open a web link in a separate window (browser popup; the desktop shell
+   * hands external URLs to the system browser). */
+  const openLinkNewWindow = (url: string): string => {
+    window.open(url, '_blank', 'noopener,noreferrer,popup=yes,width=1024,height=768')
+    return ''
+  }
+
+  /** Hand a web link to the environment's default browser. */
+  const openLinkDefault = (url: string): string => {
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return ''
+  }
+
+  /** Save a web link's resource as a download, best-effort under CORS. */
+  const saveLink = async (url: string): Promise<string> => {
+    let blob: Blob
+    try {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      blob = await response.blob()
+    } catch {
+      throw new Error(t('linkMenu.saveFailed'))
+    }
+    let name = 'download'
+    try {
+      name = decodeURIComponent(new URL(url).pathname.split('/').pop() || '') || 'download'
+    } catch {
+      /* keep the fallback name */
+    }
+    const href = URL.createObjectURL(blob)
+    const anchor = doc.createElement('a')
+    anchor.href = href
+    anchor.download = name
+    anchor.style.display = 'none'
+    doc.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(href), 1000)
+    return t('linkMenu.done.saved')
+  }
+
+  /** Build and show the menu for a web link. */
+  const openLinkMenu = (x: number, y: number, url: string): void => {
+    close()
+    const root = doc.createElement('div')
+    root.className = 'dsh-file-menu'
+    root.setAttribute(MENU_ATTRIBUTE, '')
+    root.setAttribute('role', 'menu')
+    const header = doc.createElement('div')
+    header.className = 'dsh-file-menu__header'
+    header.textContent = t('linkMenu.header')
+    const separator = doc.createElement('div')
+    separator.className = 'dsh-file-menu__separator'
+    const row = (label: string, run: () => string | Promise<string>): HTMLButtonElement => {
+      const button = doc.createElement('button')
+      button.type = 'button'
+      button.className = 'dsh-file-menu__item'
+      button.setAttribute('role', 'menuitem')
+      const text = doc.createElement('span')
+      text.textContent = label
+      button.append(text)
+      button.addEventListener('click', event => {
+        event.stopPropagation()
+        void act(async () => run())
+      })
+      return button
+    }
+    root.append(
+      header,
+      row(t('linkMenu.newTab'), () => openLinkInTab(url)),
+      row(t('linkMenu.newWindow'), () => openLinkNewWindow(url)),
+      row(t('linkMenu.defaultBrowser'), () => openLinkDefault(url)),
+      separator,
+      row(t('linkMenu.copyLink'), async () => {
+        await copy(url)
+        return t('linkMenu.done.copied')
+      }),
+      row(t('linkMenu.saveLink'), () => saveLink(url)),
+    )
+    const placed = placeMenu(x, y, LINK_MENU_WIDTH, LINK_MENU_HEIGHT, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })
+    root.style.left = `${placed.left}px`
+    root.style.top = `${placed.top}px`
+    doc.body.appendChild(root)
+    menu = root
+  }
+
+  /** The gesture: only file mentions and web links inside chat content are claimed. */
   const onContextMenu = (event: MouseEvent): void => {
-    const target = fileTargetFrom(event.target as Node)
-    if (target === undefined) {
-      close()
+    const file = fileTargetFrom(event.target as Node)
+    if (file !== undefined) {
+      const mention = normalizeMentionPath(file.getAttribute('title') ?? '')
+      if (mention === undefined) {
+        close()
+        return
+      }
+      const resolved = resolvePath(mention, cwdFor(ctx))
+      event.preventDefault()
+      event.stopPropagation()
+      open(event.clientX, event.clientY, resolved ?? mention)
       return
     }
-    const mention = normalizeMentionPath(target.getAttribute('title') ?? '')
-    if (mention === undefined) {
-      close()
+    const link = webLinkFrom(event.target as Node)
+    if (link !== undefined) {
+      event.preventDefault()
+      event.stopPropagation()
+      openLinkMenu(event.clientX, event.clientY, link.url)
       return
     }
-    const resolved = resolvePath(mention, cwdFor(ctx))
-    event.preventDefault()
-    event.stopPropagation()
-    open(event.clientX, event.clientY, resolved ?? mention)
+    close()
   }
 
   /** Close on any press that is not inside one of our panels. */

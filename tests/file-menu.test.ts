@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isAbsolutePath,
   normalizeMentionPath,
+  normalizeWebLink,
   placeMenu,
   resolvePath,
 } from '../src/client/file-menu.ts'
@@ -74,5 +75,19 @@ describe('placeMenu', () => {
 
   it('keeps an 8px margin at the top-left', () => {
     expect(placeMenu(-20, -30, 248, 268, { width: 1440, height: 900 })).toEqual({ left: 8, top: 8 })
+  })
+})
+
+describe('normalizeWebLink', () => {
+  it('keeps http and https URLs', () => {
+    expect(normalizeWebLink('https://github.com/demo/repo')).toBe('https://github.com/demo/repo')
+    expect(normalizeWebLink('http://example.com/a?b=1')).toBe('http://example.com/a?b=1')
+  })
+
+  it('rejects other schemes and empty hrefs', () => {
+    expect(normalizeWebLink('mailto:a@b.com')).toBeUndefined()
+    expect(normalizeWebLink('file:///Users/a.md')).toBeUndefined()
+    expect(normalizeWebLink('javascript:alert(1)')).toBeUndefined()
+    expect(normalizeWebLink('   ')).toBeUndefined()
   })
 })

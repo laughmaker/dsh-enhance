@@ -40,6 +40,16 @@ export const zh = {
   'fileMenu.done.copyContents': '已复制文件内容',
   'fileMenu.done.saved': '已保存',
   'fileMenu.failed': '操作失败：{message}',
+  'linkMenu.header': '打开方式',
+  'linkMenu.newTab': '新标签页',
+  'linkMenu.newWindow': '新窗口',
+  'linkMenu.defaultBrowser': '默认浏览器',
+  'linkMenu.copyLink': '复制链接',
+  'linkMenu.saveLink': '链接另存为…',
+  'linkMenu.done.opened': '已打开',
+  'linkMenu.done.copied': '已复制链接',
+  'linkMenu.done.saved': '已保存',
+  'linkMenu.saveFailed': '无法下载该链接（可能受跨域限制）',
 } as const
 
 /** Toolbar copy, English. */
@@ -79,6 +89,16 @@ export const en: Record<keyof typeof zh, string> = {
   'fileMenu.done.copyContents': 'File contents copied',
   'fileMenu.done.saved': 'Saved',
   'fileMenu.failed': 'Could not do that: {message}',
+  'linkMenu.header': 'Open in',
+  'linkMenu.newTab': 'New tab',
+  'linkMenu.newWindow': 'New window',
+  'linkMenu.defaultBrowser': 'Default browser',
+  'linkMenu.copyLink': 'Copy link',
+  'linkMenu.saveLink': 'Save link as...',
+  'linkMenu.done.opened': 'Opened',
+  'linkMenu.done.copied': 'Link copied',
+  'linkMenu.done.saved': 'Saved',
+  'linkMenu.saveFailed': 'Could not download this link (cross-origin restrictions may apply)',
 }
 
 /** The key set every dictionary must cover. */
