@@ -35,9 +35,10 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
  * The row is kept — upstream stacks these icons in a column, which costs one
  * row per shortcut at the top of the tree.
  *
- * Five per line, wrapping beyond that. The count is enforced by max-width
- * rather than by the sidebar's own width: five 36px buttons and four 2px gaps
- * are 188px, so a wider sidebar cannot fit a sixth on the first line.
+ * How many fit on a line follows the sidebar's own width: the row takes the
+ * full content width and the wrap does the counting, so a wider sidebar shows
+ * more icons on the first line and the narrowest one (214px) still fits five
+ * 36px buttons and four 2px gaps.
  *
  * Scope excludes the collapsed rail: there the column is the app's 56px icon
  * strip (0px on macOS), a row of 36px buttons cannot fit it, and the host's own
@@ -51,7 +52,8 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
   justify-content: flex-start !important;
   gap: 2px !important;
   margin: 0 0 6px 0 !important;
-  max-width: calc(36px * 5 + 2px * 4) !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 [class*="sidebarCol"] [class*="panelList"] [class*="panelTitle"] { display: none !important; }
@@ -89,8 +91,17 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
  * trigger into an icon+label pill that fills that row's width, which means
  * justify-content:flex-start and a gap. In a 36px square that reads as an icon
  * glued to the left edge, so the box model is normalised here: centred, no
- * gap, no padding, one icon size for the whole row. */
-[class*="sidebarCol"] [class*="panelList"] > [data-dsh-enhance-entries] button {
+ * gap, no padding, one icon size for the whole row.
+ *
+ * Only a trigger that carries an icon is normalised: a plugin may also put a
+ * text-only control in the same slot (the Remote plugin's Exit link), and
+ * squeezing that into a 36px square would clip the word instead of showing it.
+ *
+ * The font size goes to zero as well: a trigger that puts bare text next to
+ * its icon (no element around it) has no box to hide, and the text would
+ * otherwise spill out of the square. The icon keeps its own size — the sheet
+ * pins the svg to 16px below, in pixels, not in em. */
+[class*="sidebarCol"] [class*="panelList"] > [data-dsh-enhance-entries] button:has(svg, img) {
   flex: none !important;
   display: inline-flex !important;
   justify-content: center !important;
@@ -101,11 +112,28 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
   margin: 0 !important;
   padding: 0 !important;
   border-radius: 12px !important;
+  font-size: 0 !important;
 }
 [class*="sidebarCol"] [class*="panelList"] > [data-dsh-enhance-entries] button svg {
   flex: none !important;
   width: 16px !important;
   height: 16px !important;
+}
+/* The row is a strip of glyphs: every entry shows its icon and nothing else.
+ *
+ * A plugin that joins the row brings its footer markup with it, and that
+ * markup is written for a wide footer row — the Remote plugin's entry is an
+ * icon+label pill, so in the 36px square its label spilled out as a clipped
+ * "R…". The label is dropped by shape rather than by name, because the markup
+ * is the plugin's own: inside the relocated container an element that carries
+ * no icon is text. The has() selector keeps an icon wrapper (a span around an
+ * svg) alive, and the empty check keeps the plugin's own badge dots.
+ *
+ * The trigger keeps its title and aria-label, so the icon still names the
+ * plugin on hover and to a screen reader; only the visible text goes.
+ */
+[class*="sidebarCol"] [class*="panelList"] > [data-dsh-enhance-entries] :where(span, label, p, div):not(:empty):not(:has(svg)):not(:has(img)) {
+  display: none !important;
 }
 /* The rail keeps the host's own treatment: the footer action block is hidden
    there exactly as the host hides it, so the strip keeps only the app's icons. */

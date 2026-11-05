@@ -11,8 +11,9 @@
  * parents, and no amount of `order` moves a node into a sibling container. So
  * this module moves the footer's action container into the panel nav once the
  * shell exists, and the stylesheet dissolves it (`display: contents`) so its
- * buttons join the row the nav lays out. Five per line, wrapping beyond that:
- * the nav's own max-width does the counting (see sidebar-layout.css).
+ * buttons join the row the nav lays out. How many sit on one line follows the
+ * sidebar's width: the row spans the content width and wraps by itself (see
+ * sidebar-layout.css).
  *
  * The relocated element is the *container* the host owns, not the entries a
  * plugin renders. React updates those entries inside it and removes them from

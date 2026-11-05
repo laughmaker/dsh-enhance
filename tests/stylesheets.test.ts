@@ -90,11 +90,14 @@ describe('registered sheets', () => {
     expect(css).toContain('prefers-reduced-motion')
   })
 
-  it('keeps the top row at five icons per line', () => {
+  it('lets the top row fill the sidebar width instead of capping it', () => {
     const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
-    // The cap is arithmetic, not a guess: five 36px buttons and four 2px gaps.
-    expect(css).toContain('max-width: calc(36px * 5 + 2px * 4)')
+    // The count per line follows the sidebar's width: the row spans the full
+    // content width and the wrap does the counting. A fixed cap would hold the
+    // row at five icons even in a wider sidebar.
+    expect(css).toContain('max-width: 100%')
     expect(css).toContain('flex-wrap: wrap')
+    expect(css).not.toContain('calc(36px * 5')
   })
 
   it('merges the relocated footer actions with the marker the module sets', () => {
@@ -109,8 +112,21 @@ describe('registered sheets', () => {
     const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
     // A plugin that styles its trigger for the footer row sets flex-start and a
     // gap; left alone, the icon sits against the left edge of the 36px square.
-    const rule = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button \\{[^}]*justify-content: center`)
+    // Only a trigger that carries an icon is normalised — a text-only control in
+    // the same slot would be clipped instead of shown.
+    const rule = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button:has\\(svg, img\\) \\{[^}]*justify-content: center`)
     expect(css).toMatch(rule)
-    expect(css).toMatch(new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button \\{[^}]*gap: 0`))
+    expect(css).toMatch(new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button:has\\(svg, img\\) \\{[^}]*gap: 0`))
+  })
+
+  it('shows a relocated plugin icon without its label', () => {
+    const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
+    // The row is a strip of glyphs. The label markup is the plugin's own, so it
+    // is dropped by shape: inside the relocated container an element that
+    // carries no icon is text.
+    expect(css).toContain(':where(span, label, p, div):not(:empty):not(:has(svg)):not(:has(img))')
+    // Text with no element around it has no box to hide; the font size takes it.
+    const rule = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button:has\\(svg, img\\) \\{[^}]*font-size: 0`)
+    expect(css).toMatch(rule)
   })
 })
