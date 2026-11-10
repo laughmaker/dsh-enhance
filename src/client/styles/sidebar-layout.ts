@@ -8,18 +8,101 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
 [class*="sidebarCol"] [class*="sectionLabel"] {
   margin-left: 4px !important;
 }
-/* One indent for both row kinds.
+
+/* The section heading gives up its words for two icon counts.
  *
- * Session rows and workspace rows previously used different start insets, which
- * made the tree look ragged: the folder title sat further right than the session
- * titles under it. Both now start at 5px.
+ * The host renders the words ("Workspaces", or "Sessions" in the flat
+ * grouping) and re-renders them, so the node stays put and only its text is
+ * hidden. The counts row is inserted right after it by section-stats.ts and
+ * takes the same line: the heading collapses to nothing, and the row is the
+ * heading's flex sibling, so it lands where the words were.
  *
- * A negative margin on the workspace row was tried and reverted: it dragged the
- * whole row — glyph included — past the sidebar's left edge, so every triangle
- * disappeared. The indent is the only lever that stays inside the column. */
+ * One of the two groups shows. The row carries data-active once a session is
+ * running or a finished one is still unread, and that group replaces the idle
+ * one — totals for sessions and workspaces — rather than sitting beside it.
+ * Four numbers on one line would no longer fit the heading's width.
+ */
+[class*="sidebarCol"] [class*="sectionHeader"]:has([data-dsh-enhance-stats]) [class*="sectionLabel"] {
+  display: none !important;
+}
+
+/* The row starts on the sidebar's content edge, the line the reader marked in
+ * red. The heading's own padding puts it past that line, so the margin pulls
+ * the first icon back onto it. The tree rows below are pulled to the same
+ * line, which is what keeps the icons, the arrows and the folder names flush. */
+[data-dsh-enhance-stats] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  margin-left: -2px !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+[data-dsh-enhance-stats] [data-group] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+[data-dsh-enhance-stats]:not([data-active="true"]) [data-group="active"],
+[data-dsh-enhance-stats][data-active="true"] [data-group="idle"] {
+  display: none !important;
+}
+
+/* The heading row is a fixed 36px tall and clips its overflow, so a 16px icon
+ * leaves a dead band above and below it where the pointer lands on the row
+ * instead of the count and the tip never shows. Stretching the count to the
+ * row's height makes the whole band the hover target; the icon stays centred. */
+[data-dsh-enhance-stats] .dsh-enhance-stat {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 1px !important;
+  height: 36px !important;
+  margin-top: -10px !important;
+  margin-bottom: -10px !important;
+}
+
+[data-dsh-enhance-stats] svg {
+  flex: none !important;
+  width: 14px !important;
+  height: 14px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+/* The bell's notification dot is a filled disc in the lucide glyph; the bell
+ * itself stays an outline. Filling only the circle keeps both. */
+[data-dsh-enhance-stats] [data-count="unread"] svg circle {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+/* The running mark is a filled silhouette, not a stroked outline like the
+ * other three, so it opts out of the stroke treatment above. The glyph faces
+ * right; the row reads left to right, so it is mirrored to run towards the
+ * counts that follow it. */
+[data-dsh-enhance-stats] [data-count="running"] svg {
+  fill: currentColor !important;
+  stroke: none !important;
+  transform: scaleX(-1) !important;
+}
+/* One indent for both row kinds, and that indent is the content edge.
+ *
+ * The list pulls its rows back 4px and the rows themselves add a start inset,
+ * which left the disclosure arrows and the folder names short of the sidebar's
+ * content edge. Zeroing the inset lands both on that edge, the same line the
+ * counts row above is pulled to. A negative margin was tried instead and
+ * reverted: it dragged the whole row past the column, so the arrows vanished. */
 [role="treeitem"][data-row-key^="session:"],
 [role="treeitem"][data-row-key^="workspace:"] {
-  padding-inline-start: 5px !important;
+  padding-inline-start: 4px !important;
 }
 
 
@@ -40,6 +123,13 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
  * more icons on the first line and the narrowest one (214px) still fits five
  * 36px buttons and four 2px gaps.
  *
+ * Every hover and active fill is that same square. The host paints the fill on
+ * the padding box and keeps a 3px transparent border on each side, the inset
+ * it uses to line labelled rows up. On a 36px button that leaves a 30×36
+ * painted background, a rectangle, while a plugin button in the same row has
+ * no such border and paints a 36px square. The border is dropped here, and the
+ * fill is clipped to the border box, so both kinds cover the whole square.
+ *
  * Scope excludes the collapsed rail: there the column is the app's 56px icon
  * strip (0px on macOS), a row of 36px buttons cannot fit it, and the host's own
  * vertical layout is the right shape. The rail is not reachable on macOS
@@ -58,13 +148,17 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
 
 [class*="sidebarCol"] [class*="panelList"] [class*="panelTitle"] { display: none !important; }
 [class*="sidebarCol"] [class*="panelList"] button[class*="panelRow"] {
+  box-sizing: border-box !important;
   width: 36px !important;
   height: 36px !important;
+  min-width: 36px !important;
   min-height: 36px !important;
   justify-content: center !important;
   gap: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+  border: none !important;
+  background-clip: border-box !important;
   border-radius: 12px !important;
 }
 
@@ -91,7 +185,9 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
  * trigger into an icon+label pill that fills that row's width, which means
  * justify-content:flex-start and a gap. In a 36px square that reads as an icon
  * glued to the left edge, so the box model is normalised here: centred, no
- * gap, no padding, one icon size for the whole row.
+ * gap, no padding, no border, one icon size for the whole row. The border goes
+ * too: a plugin border would inset the fill the same way the host's side
+ * border does, and the row would be back to mixed shapes.
  *
  * Only a trigger that carries an icon is normalised: a plugin may also put a
  * text-only control in the same slot (the Remote plugin's Exit link), and
@@ -107,10 +203,15 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
   justify-content: center !important;
   align-items: center !important;
   gap: 0 !important;
+  box-sizing: border-box !important;
   width: 36px !important;
   height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
   margin: 0 !important;
   padding: 0 !important;
+  border: none !important;
+  background-clip: border-box !important;
   border-radius: 12px !important;
   font-size: 0 !important;
 }

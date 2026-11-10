@@ -108,6 +108,18 @@ describe('registered sheets', () => {
     expect(css).toContain('display: contents')
   })
 
+  it('paints every top-row background as the same square', () => {
+    const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
+    // The host keeps a 3px transparent side border and paints the hover fill on
+    // the padding box, so a 36px button shows a 30×36 rectangle. Dropping the
+    // border and clipping to the border box makes that fill the full square,
+    // the same shape as a plugin button that brings no border of its own.
+    const host = /button\[class\*="panelRow"\] \{[^}]*border: none[^}]*background-clip: border-box/
+    const plugin = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button:has\\(svg, img\\) \\{[^}]*border: none[^}]*background-clip: border-box`)
+    expect(css).toMatch(host)
+    expect(css).toMatch(plugin)
+  })
+
   it('centres a relocated plugin icon instead of the plugin\'s wide pill layout', () => {
     const css = SHEETS.find(([name]) => name === 'sidebar-layout.css')?.[1] ?? ''
     // A plugin that styles its trigger for the footer row sets flex-start and a

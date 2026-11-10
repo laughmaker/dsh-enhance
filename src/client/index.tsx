@@ -21,6 +21,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller'
 import { installStyles } from './styles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
+import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
 import { installTurnBadge } from './turn-badge.ts'
@@ -69,9 +70,13 @@ export function apply(ctx: Context): void {
   }), 'dsh-enhance: sidebar floor')
   // Plugins that register a sidebar footer action land at the bottom, beside the
   // account row. The footer's container is moved into the panel row so every
-  // plugin icon shares the top list (five per line, wrapping) regardless of the
-  // slot it was registered in.
+  // plugin icon shares the top list (wrapping with the sidebar's width)
+  // regardless of the slot it was registered in.
   ctx.effect(() => installSidebarTopRow(document), 'dsh-enhance: sidebar top row')
+  // The "Workspaces" heading names the tree under it and nothing more. The row
+  // that replaces it counts sessions and workspaces, and switches to running
+  // and unread counts while either of those is above zero.
+  ctx.effect(() => installSectionStats(ctx, document), 'dsh-enhance: section stats')
   // The Electron shell opens at a fixed 1280x820 and remembers nothing; the page it
   // shows is allowed to size the window, so the first launch fills the work area and
   // later launches reopen at the frame the last one closed with. A browser tab has
