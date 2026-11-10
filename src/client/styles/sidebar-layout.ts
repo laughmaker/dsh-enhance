@@ -241,4 +241,245 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
 [class*="sidebarCol"] [class*="_root"][class*="collapsed"] [data-dsh-enhance-entries] {
   display: none !important;
 }
+
+/* The right sidebar's Start page lists its tools as one centred column of
+ * 380px rounded rectangles (the host's guide entries). Two per row, wrapping,
+ * matches the host's own tool grid, and the column stops being a fixed width
+ * so the pair fills the pane. */
+[class*="_guide"]:has([data-sidebar-right-guide-entry]) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: center !important;
+  justify-items: stretch !important;
+}
+[class*="_guide"]:has([data-sidebar-right-guide-entry]) [class*="entryCell"],
+[class*="_guide"]:has([data-sidebar-right-guide-entry]) [class*="moreAnchor"] {
+  width: auto !important;
+  max-width: none !important;
+}
+/* The entry sizes to its label, so it would sit as a short pill at the left of
+ * its cell. Stretching it makes each card fill its half of the row. The More
+ * tools card is the same entry class but carries no data attribute, so it is
+ * named alongside the attributed ones. */
+[data-sidebar-right-guide-entry],
+[class*="_guide"] [class$="_entry"] {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+/* The compass mark above the list is decoration; the entries name themselves. */
+[class*="_guide"]:has([data-sidebar-right-guide-entry]) [class*="hero"] {
+  display: none !important;
+}
+
+/* The entries become pills, a third shorter than the host's 56px floor. The
+ * radius supplies the curve and the superellipse decides its shape: 1.5
+ * flattens the ends toward a rounded rectangle and higher values go squarer,
+ * so 1 — a plain ellipse — is the capsule. The attribute is the host's own
+ * marker on a guide entry, so no other button is touched. */
+[data-sidebar-right-guide-entry],
+[class*="_guide"] [class$="_entry"] {
+  border-radius: 999px !important;
+  corner-shape: superellipse(1) !important;
+  min-height: 0 !important;
+  height: 37px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Two more chips that paint a small rounded rectangle: the preset picker in
+ * the composer (its hover fill shows the 8px radius) and the background-job
+ * count in the session header. Named exactly, because "_seat" and "_trigger"
+ * also occur inside the account menu, the access-mode picker and the model
+ * picker, which keep their own shape. */
+.ufIuna_seat,
+._4iHfma_trigger {
+  border-radius: 999px !important;
+  corner-shape: superellipse(1) !important;
+}
+
+/* The composer's plain chips grow a rounded-rectangle hover fill: the
+ * workspace picker, the new-worktree toggle, the access-mode picker and the
+ * model picker. Only the hover fill changes shape, so the resting chip stays
+ * as the host drew it. */
+._8tPydW_workspace:hover,
+.ZTF-0q_toggle:hover,
+.SJRB_q_trigger:hover,
+.htuFrW_root:hover .htuFrW_trigger {
+  border-radius: 999px !important;
+  corner-shape: unset !important;
+}
+
+/* The send button only looks solid while the pointer is over it: the host
+ * fades it while disabled and swaps its fill for a darker one on hover. It keeps
+ * the solid fill whenever it can be clicked, and stays faded when it cannot. */
+.JZLxKW_primary:not(:disabled) {
+  background: var(--dsw-alias-button-info-fill) !important;
+}
+
+/* The Preview chip and the "Into the Unknown" line are labels, not controls.
+ * The whale stays. */
+._8tPydW_previewBadge,
+._8tPydW_titleGroup {
+  display: none !important;
+}
+
+.ga5fXW_split {
+  border-radius: var(--dsw-radius-xl) !important;
+}
+
+/* The little whale above the headline only fidgets while hovered. It roams the
+ * open water of the row instead of shuttling on one line: it darts, coasts,
+ * climbs and dips, and bounces off each end. The facing and the travel live on
+ * different elements, because scaling the element that moves squashes it flat. */
+@keyframes dsh-enhance-whale-travel {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  7% {
+    transform: translate(18px, 12px) rotate(9deg);
+  }
+  16% {
+    transform: translate(-150px, -24px) rotate(-15deg);
+  }
+  23% {
+    transform: translate(-118px, 6px) rotate(8deg);
+  }
+  34% {
+    transform: translate(-300px, -16px) rotate(-5deg);
+  }
+  44% {
+    transform: translate(-206px, 14px) rotate(12deg);
+  }
+  54% {
+    transform: translate(-90px, -22px) rotate(-11deg);
+  }
+  66% {
+    transform: translate(-246px, 10px) rotate(7deg);
+  }
+  78% {
+    transform: translate(-54px, -18px) rotate(-13deg);
+  }
+  90% {
+    transform: translate(16px, 8px) rotate(10deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+/* The body itself flexes. The wide frames stretch it nose to tail and the
+ * tall frames bunch it up, while the sign keeps the nose pointing the way it
+ * is going. It lives on the wrapper, away from the travel, so the stretch
+ * never flattens the fish as it crosses its own centre. */
+@keyframes dsh-enhance-whale-flex {
+  0%,
+  4% {
+    transform: scale(1.16, 0.86);
+  }
+  8% {
+    transform: scale(-1.16, 0.86);
+  }
+  12% {
+    transform: scale(-0.84, 1.18);
+  }
+  16% {
+    transform: scale(1.16, 0.86);
+  }
+  20% {
+    transform: scale(0.84, 1.18);
+  }
+  24% {
+    transform: scale(-1.16, 0.86);
+  }
+  28% {
+    transform: scale(-0.84, 1.18);
+  }
+  32% {
+    transform: scale(-1.16, 0.86);
+  }
+  36% {
+    transform: scale(0.84, 1.18);
+  }
+  40% {
+    transform: scale(1.16, 0.86);
+  }
+  44% {
+    transform: scale(0.84, 1.18);
+  }
+  48% {
+    transform: scale(1.16, 0.86);
+  }
+  52% {
+    transform: scale(0.84, 1.18);
+  }
+  56% {
+    transform: scale(-1.16, 0.86);
+  }
+  60% {
+    transform: scale(-0.84, 1.18);
+  }
+  64% {
+    transform: scale(-1.16, 0.86);
+  }
+  68% {
+    transform: scale(0.84, 1.18);
+  }
+  72% {
+    transform: scale(1.16, 0.86);
+  }
+  76% {
+    transform: scale(0.84, 1.18);
+  }
+  80% {
+    transform: scale(1.16, 0.86);
+  }
+  84% {
+    transform: scale(0.84, 1.18);
+  }
+  88% {
+    transform: scale(1.16, 0.86);
+  }
+  92% {
+    transform: scale(-0.84, 1.18);
+  }
+  96% {
+    transform: scale(-1.16, 0.86);
+  }
+  100% {
+    transform: scale(-0.84, 1.18);
+  }
+}
+/* The headline row is only as wide as its contents, which leaves the whale
+ * nowhere to swim but across the letters. Stretching the row gives it open
+ * water on both sides; the input card below keeps its own width. */
+._8tPydW_headline {
+  width: calc(100vw - 520px) !important;
+  max-width: 960px !important;
+}
+
+/* The GenUI prompt toggle paints an inset ring and a fill while a mode is on.
+ * It rests plain and only shows its fill under the pointer. */
+.aG4Rta_trigger[data-active] {
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.aG4Rta_trigger[data-active]:hover {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+}
+
+/* The host rounds every corner with a superellipse, which flattens a pill
+ * back into a rounded rectangle. The variable is what that rule reads. */
+:root {
+  --dsw-corner-shape: superellipse(1) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  ._8tPydW_fishHitbox {
+    animation: dsh-enhance-whale-flex 9s linear infinite !important;
+    transform-origin: 50% 60% !important;
+  }
+  ._8tPydW_fish {
+    animation: dsh-enhance-whale-travel 9s linear infinite !important;
+  }
+}
 `
