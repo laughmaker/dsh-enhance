@@ -11,7 +11,7 @@ import {
   promptForSideChat, quoteForDraft, quotedBlock,
 } from '../src/client/selection.ts'
 import {
-  addAnnotation, annotationLine, annotationsOf, annotationsPrompt, clearAnnotations,
+  addAnnotation, annotationBlock, annotationsOf, annotationsPrompt, clearAnnotations,
   annotationsVisibleIn, removeAnnotation, subscribeAnnotations, updateAnnotationNote,
 } from '../src/client/annotations.ts'
 import { mountBadges, rangesOf, removeBadges } from '../src/client/anchors.ts'
@@ -73,22 +73,52 @@ describe('placeToolbar', () => {
 })
 
 describe('annotation prompt block', () => {
-  it('renders one compact line per annotation', () => {
+  it('splits each annotation into a selected block and a comment block', () => {
     const block = annotationsPrompt([
       { id: 'a', passage: 'first line\nsecond line', note: 'tighten this' },
       { id: 'b', passage: 'another', note: '' },
     ])
     expect(block).toBe([
-      'Regarding these passages:',
-      '- "first line second line" — tighten this',
-      '- "another"',
+      '1. Selected text:',
+      '   first line second line',
+      '',
+      '   User comment:',
+      '   tighten this',
+      '',
+      '2. Selected text:',
+      '   another',
     ].join('\n'))
   })
 
   it('truncates a long passage so the draft stays readable', () => {
-    const line = annotationLine({ id: 'c', passage: 'x'.repeat(400), note: 'n' })
-    // Two quotes + the ellipsis + the em dash and note.
-    expect(line).toBe(`"${'x'.repeat(139)}…" — n`)
+    const block = annotationBlock({ id: 'c', passage: 'x'.repeat(400), note: 'n' })
+    // The quote keeps 139 characters plus the ellipsis, and stands alone.
+    expect(block).toBe([
+      'Selected text:',
+      `   ${'x'.repeat(139)}…`,
+      '',
+      '   User comment:',
+      '   n',
+    ].join('\n'))
+  })
+
+  it('indents a comment written over several lines to the same column', () => {
+    const block = annotationBlock({ id: 'd', passage: 'p', note: 'first\r\nsecond' })
+    expect(block).toBe(['Selected text:', '   p', '', '   User comment:', '   first', '   second'].join('\n'))
+  })
+
+  it('renders one annotation as its two labelled blocks without a number', () => {
+    expect(annotationBlock({ id: 'a', passage: 'quoted', note: 'do this' }))
+      .toBe('Selected text:\n   quoted\n\n   User comment:\n   do this')
+    expect(annotationBlock({ id: 'b', passage: 'quoted', note: '' })).toBe('Selected text:\n   quoted')
+  })
+
+  it('leaves each block contiguous inside the prompt the composer searches', () => {
+    const first = { id: 'a', passage: 'quoted', note: 'do this' }
+    const second = { id: 'b', passage: 'other', note: '' }
+    const prompt = annotationsPrompt([first, second])
+    expect(prompt).toContain(annotationBlock(first))
+    expect(prompt).toContain(annotationBlock(second))
   })
 
   it('returns an empty string when there is nothing to carry', () => {
@@ -120,11 +150,6 @@ describe('annotation store', () => {
 })
 
 describe('annotation anchors', () => {
-  it('renders one compact line per annotation with its instruction', () => {
-    expect(annotationLine({ id: 'a', passage: 'quoted', note: 'do this' })).toBe('"quoted" — do this')
-    expect(annotationLine({ id: 'b', passage: 'quoted', note: '' })).toBe('"quoted"')
-  })
-
   it('edits an existing note in place and reports whether it changed', () => {
     addAnnotation('edit-1', 'passage', 'before')
     const first = annotationsOf('edit-1')[0]!

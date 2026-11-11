@@ -4,9 +4,9 @@
  *
  * Annotations are browser-local and ephemeral, matching the reading gesture —
  * they exist while the draft they belong to exists. They are rendered into the
- * outgoing message as a fenced block so the model receives the passage and the
- * instruction together, and so the transcript keeps a readable record of what
- * was asked about.
+ * outgoing message as numbered entries of two labelled blocks — the passage,
+ * then the comment on it — so the model receives both halves together and the
+ * transcript keeps a readable record of what was asked about.
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
@@ -194,34 +194,49 @@ export function retainOnly(keep: SessionId | string | undefined): void {
   if (changed) publish()
 }
 
+/** Column the body of an entry sits at, so it lines up under its label. */
+const INDENT = '   '
+
 /**
- * Render one annotation as the compact reference the composer carries.
+ * Render one annotation as two labelled blocks: the passage, then the comment.
  *
- * The composer is a reading surface, not a document: a whole annotation block
- * dumped into it buries what the reader was writing. One line per annotation
- * keeps the draft readable while still carrying both halves the model needs.
+ * One line with a dash between the two read badly as soon as the passage was
+ * long: the quotation, the truncation ellipsis and the reader's own sentence
+ * ran together, and the words they typed were no longer visibly theirs. Named
+ * blocks keep each half on its own lines, and drop the quotes, since the label
+ * already says what the text under it is. Without a comment only the passage
+ * block is sent — an empty label would ask the model to answer nothing.
+ *
+ * The number goes on in `annotationsPrompt`, which keeps this text contiguous:
+ * the composer looks for it in the draft before carrying an annotation again.
  * @param annotation - the annotation to render.
- * @returns one line of message text.
+ * @returns message text for one annotation, its continuation lines indented.
  */
-export function annotationLine(annotation: Annotation): string {
+export function annotationBlock(annotation: Annotation): string {
   const passage = annotation.passage.replace(/\s+/g, ' ').trim()
   const quoted = passage.length > 140 ? `${passage.slice(0, 139)}…` : passage
-  const note = annotation.note.trim()
-  return note.length === 0 ? `"${quoted}"` : `"${quoted}" — ${note}`
+  const lines = ['Selected text:', `${INDENT}${quoted}`]
+  const note = annotation.note.replace(/\r\n|\r/g, '\n').trim()
+  if (note.length > 0) {
+    lines.push('', `${INDENT}User comment:`)
+    // A comment written with Shift+Enter keeps its line breaks; each line still
+    // has to sit at the same column as the first one.
+    for (const line of note.split('\n')) lines.push(`${INDENT}${line}`)
+  }
+  return lines.join('\n')
 }
 
 /**
  * Render the marked passages as the preamble of an outgoing message.
  *
- * The block lists what the instructions refer to, then leaves the reader's own
- * words as the body of the message underneath.
+ * Each annotation becomes a numbered entry, and the reader's own words follow
+ * the last one as the body of the message.
  * @param annotations - the annotations being sent.
  * @returns message text, or an empty string when there are none.
  */
 export function annotationsPrompt(annotations: readonly Annotation[]): string {
   if (annotations.length === 0) return ''
-  const lines = annotations.map(annotation => `- ${annotationLine(annotation)}`)
-  return `Regarding these passages:\n${lines.join('\n')}`
+  return annotations.map((annotation, index) => `${index + 1}. ${annotationBlock(annotation)}`).join('\n\n')
 }
 
 /**

@@ -24,7 +24,7 @@ import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-cl
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { SelectionToolbar, type AnnotationSubmit } from './SelectionToolbar.tsx'
 import {
-  addAnnotation, annotationLine, annotationsOf, annotationsPrompt, annotationsVisibleIn, clearAnnotations,
+  addAnnotation, annotationBlock, annotationsOf, annotationsPrompt, annotationsVisibleIn, clearAnnotations,
   removeAnnotation, subscribeAnnotations, updateAnnotationNote, type Annotation,
   type AnnotationAnchor,
 } from './annotations.ts'
@@ -255,8 +255,8 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
       carrying = true
       try {
         // Keep the draft exactly as the reader left it apart from this block:
-        // only annotations whose line is not already there get inserted.
-        const missing = annotations.filter(annotation => !draft.includes(annotationLine(annotation)))
+        // only annotations whose text is not already there get inserted.
+        const missing = annotations.filter(annotation => !draft.includes(annotationBlock(annotation)))
         if (missing.length > 0) {
           const text = `${annotationsPrompt(missing)}\n\n`
           const insertion = inputActions.captureInsertion()
