@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspaces · Compact Precision</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #202225;
+      --chrome: #222427;
+      --text: #d8dade;
+      --text-strong: #e2e4e7;
+      --secondary: #a3a8ae;
+      --quiet: #8d939b;
+      --line: #34383d;
+      --tree: #3a3e43;
+      --accent: #8cb6d8;
+      --accent-soft: #abc9e1;
+      --selected: #2b343d;
+      --selected-edge: #3b4854;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 420px;
+      height: 1680px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    button {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      color: inherit;
+      background: none;
+      font: inherit;
+    }
+
+    svg {
+      display: block;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sidebar {
+      width: 420px;
+      height: 1680px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    .window-chrome {
+      height: 44px;
+      flex: 0 0 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px 0 17px;
+      background: var(--chrome);
+    }
+
+    .traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .traffic-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.2);
+    }
+
+    .traffic-light.red { background: #ff5f57; }
+    .traffic-light.yellow { background: #febc2e; }
+    .traffic-light.green { background: #28c840; }
+
+    .icon-button {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary);
+      border-radius: 5px;
+    }
+
+    .workspace-header {
+      height: 58px;
+      flex: 0 0 58px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px 0 18px;
+      background: var(--chrome);
+      border-bottom: 1px solid #2d3034;
+    }
+
+    .workspace-title {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.25px;
+      line-height: 1;
+    }
+
+    .workspace-actions {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: auto;
+    }
+
+    .workspace-actions .icon-button { width: 32px; }
+
+    .workspace-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 14px 12px 20px;
+    }
+
+    .project-group {
+      position: relative;
+      margin: 0;
+    }
+
+    .project-group + .project-group { margin-top: 10px; }
+
+    .project-header {
+      position: relative;
+      z-index: 1;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: var(--text);
+      border-radius: 5px;
+    }
+
+    .project-header.current-project {
+      color: var(--text-strong);
+      background: #262a2e;
+      box-shadow: inset 0 0 0 1px #30353a;
+    }
+
+    .project-chevron {
+      width: 12px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 12px;
+      color: var(--quiet);
+    }
+
+    .project-chevron svg {
+      width: 10px;
+      height: 10px;
+      stroke-width: 1.8;
+    }
+
+    .project-icon {
+      width: 20px;
+      height: 38px;
+      margin-left: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      color: #969da4;
+    }
+
+    .project-icon svg { width: 16px; height: 16px; }
+
+    .project-name {
+      min-width: 0;
+      margin-left: 7px;
+      overflow: hidden;
+      color: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      letter-spacing: -0.08px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .current-project .project-icon { color: var(--accent); }
+    .current-project .project-name { font-weight: 600; }
+
+    .current-project-mark {
+      width: 5px;
+      height: 5px;
+      margin-left: auto;
+      flex: 0 0 5px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+
+    .project-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: auto;
+      padding-left: 8px;
+    }
+
+    .project-actions .icon-button {
+      width: 28px;
+      height: 28px;
+      color: var(--quiet);
+    }
+
+    .project-actions svg { width: 16px; height: 16px; }
+
+    .session-tree {
+      position: relative;
+      margin: 1px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .session-tree::before {
+      position: absolute;
+      top: 0;
+      bottom: 19px;
+      left: 18px;
+      width: 1px;
+      content: "";
+      background: var(--tree);
+    }
+
+    .session-row {
+      position: relative;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      margin: 0;
+      padding: 0 9px 0 37px;
+      border-radius: 5px;
+    }
+
+    .session-row::before {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      width: 10px;
+      height: 1px;
+      content: "";
+      background: var(--tree);
+    }
+
+    .session-title {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 20px;
+      letter-spacing: -0.06px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session-time {
+      width: 44px;
+      flex: 0 0 44px;
+      margin-left: 12px;
+      color: var(--secondary);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 400;
+      line-height: 18px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .show-more {
+      position: relative;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      padding-left: 37px;
+      color: var(--quiet);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .show-more::before {
+      position: absolute;
+      top: 15px;
+      left: 18px;
+      width: 10px;
+      height: 1px;
+      content: "";
+      background: var(--tree);
+    }
+
+    .show-more svg {
+      width: 12px;
+      height: 12px;
+      margin-right: 7px;
+      stroke-width: 1.5;
+    }
+
+    .session-row.active {
+      height: 40px;
+      margin: 1px 0;
+      padding-left: 48px;
+      background: var(--selected);
+      border-radius: 8px;
+      box-shadow: inset 0 0 0 1px var(--selected-edge);
+    }
+
+    .session-row.active::before { display: none; }
+
+    .session-row.active::after {
+      position: absolute;
+      top: 9px;
+      bottom: 9px;
+      left: 0;
+      width: 2px;
+      content: "";
+      background: var(--accent);
+      border-radius: 0 1px 1px 0;
+    }
+
+    .active .session-title {
+      color: #e1e9ef;
+      font-weight: 500;
+    }
+
+    .active .session-time { color: var(--accent-soft); }
+
+    .running-ring {
+      position: absolute;
+      top: 15px;
+      left: 24px;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--accent);
+      border-radius: 50%;
+    }
+
+    .running-ring::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 2px;
+      height: 2px;
+      content: "";
+      background: var(--accent-soft);
+      border-radius: 50%;
+    }
+
+    .collapsed .project-header { height: 36px; }
+    .collapsed .project-chevron,
+    .collapsed .project-icon { height: 36px; }
+    .collapsed .project-name { color: #c6cacf; }
+
+    .account-bar {
+      height: 76px;
+      flex: 0 0 76px;
+      display: flex;
+      align-items: center;
+      padding: 0 13px 0 16px;
+      background: var(--chrome);
+      border-top: 1px solid #303338;
+    }
+
+    .account {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      object-fit: cover;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px #41464c;
+    }
+
+    .account-name {
+      margin-left: 10px;
+      color: var(--text-strong);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .account-tools {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      padding-left: 12px;
+    }
+
+    .account-tools .icon-button {
+      width: 30px;
+      height: 32px;
+      color: #a9afb6;
+    }
+
+    .account-tools svg { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Workspaces 侧栏">
+    <header class="window-chrome">
+      <div class="traffic-lights" aria-label="窗口控制">
+        <span class="traffic-light red"></span>
+        <span class="traffic-light yellow"></span>
+        <span class="traffic-light green"></span>
+      </div>
+      <button class="icon-button" aria-label="分栏">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <rect x="2.75" y="2.75" width="12.5" height="12.5" rx="2"></rect>
+          <path d="M10.5 3v12"></path>
+        </svg>
+      </button>
+    </header>
+
+    <section class="workspace-header" aria-label="Workspaces 工具栏">
+      <h1 class="workspace-title">Workspaces</h1>
+      <div class="workspace-actions">
+        <button class="icon-button" aria-label="搜索">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <circle cx="7.75" cy="7.75" r="4.75"></circle>
+            <path d="m11.25 11.25 3.5 3.5"></path>
+          </svg>
+        </button>
+        <button class="icon-button" aria-label="筛选">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M2.5 5h13M4.5 9h9M7 13h4"></path>
+            <circle cx="6" cy="5" r="1.25" fill="#222427"></circle>
+            <circle cx="11.5" cy="9" r="1.25" fill="#222427"></circle>
+          </svg>
+        </button>
+        <button class="icon-button" aria-label="新建">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M9 3.25v7.5M5.25 7h7.5"></path>
+            <path d="M13.5 10.75v3.5h-10v-10h7"></path>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <main class="workspace-list">
+      <section class="project-group" aria-label="Pet 项目">
+        <div class="project-header">
+          <span class="project-chevron">
+            <svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2.25 3.75 2.75 2.75 2.75-2.75"></path></svg>
+          </span>
+          <span class="project-icon">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg>
+          </span>
+          <span class="project-name">Pet</span>
+          <div class="project-actions">
+            <button class="icon-button" aria-label="Pet 更多操作">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="0.75" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.75" fill="currentColor" stroke="none"></circle><circle cx="12.5" cy="8" r="0.75" fill="currentColor" stroke="none"></circle></svg>
+            </button>
+            <button class="icon-button" aria-label="在 Pet 中新建会话">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M8 5v6M5 8h6"></path></svg>
+            </button>
+          </div>
+        </div>
+        <ul class="session-tree">
+          <li class="session-row"><span class="session-title">宠物磨甲器产品定义反推</span><time class="session-time">10h</time></li>
+          <li class="session-row"><span class="session-title">BLE 与 NFC 寻物标签及…</span><time class="session-time">3d</time></li>
+          <li class="session-row"><span class="session-title">防丢器源头工厂溯源</span><time class="session-time">3d</time></li>
+          <li class="session-row"><span class="session-title">墨水屏型号介绍</span><time class="session-time">4d</time></li>
+          <li class="session-row"><span class="session-title">Google 的 Find Hub 如…</span><time class="session-time">4d</time></li>
+          <li class="show-more"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5h7M2.5 7.5h4.5"></path></svg>Show 15 more sessions</li>
+        </ul>
+      </section>
+
+      <section class="project-group" aria-label="blj-project 项目">
+        <div class="project-header">
+          <span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2.25 3.75 2.75 2.75 2.75-2.75"></path></svg></span>
+          <span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span>
+          <span class="project-name">blj-project</span>
+        </div>
+        <ul class="session-tree">
+          <li class="session-row"><span class="session-title">界面改造与自动部署</span><time class="session-time">9min</time></li>
+          <li class="session-row"><span class="session-title">Review and Update Pro…</span><time class="session-time">7h</time></li>
+          <li class="session-row"><span class="session-title">读取并理解整个项目</span><time class="session-time">16d</time></li>
+        </ul>
+      </section>
+
+      <section class="project-group collapsed" aria-label="Baolijie 项目，已折叠">
+        <div class="project-header">
+          <span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span>
+          <span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span>
+          <span class="project-name">Baolijie</span>
+        </div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="baolijie-data-platform 项目，已折叠">
+        <div class="project-header">
+          <span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span>
+          <span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span>
+          <span class="project-name">baolijie-data-platform</span>
+        </div>
+      </section>
+
+      <section class="project-group" aria-label="dsh-enhance 当前项目">
+        <div class="project-header current-project">
+          <span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2.25 3.75 2.75 2.75 2.75-2.75"></path></svg></span>
+          <span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span>
+          <span class="project-name">dsh-enhance</span>
+          <span class="current-project-mark" aria-label="当前项目"></span>
+        </div>
+        <ul class="session-tree">
+          <li class="session-row active" aria-current="page">
+            <span class="running-ring" aria-hidden="true"></span>
+            <span class="session-title">功能使用方法询问</span>
+            <time class="session-time">now</time>
+          </li>
+          <li class="session-row"><span class="session-title">会话迁移与功能调整</span><time class="session-time">8min</time></li>
+        </ul>
+      </section>
+
+      <section class="project-group collapsed" aria-label="equity-course 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">equity-course</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="pet-radar 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">pet-radar</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="codex-theme 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">codex-theme</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="Sales 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">Sales</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="Survey 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">Survey</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="Temp 项目，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">Temp</span></div>
+      </section>
+
+      <section class="project-group collapsed" aria-label="Ungrouped，已折叠">
+        <div class="project-header"><span class="project-chevron"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="m3.75 2.25 2.75 2.75-2.75 2.75"></path></svg></span><span class="project-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 4.25v7.5c0 .55.45 1 1 1h10.5c.55 0 1-.45 1-1V5.25c0-.55-.45-1-1-1H7.75l-1.5-2h-3.5c-.55 0-1 .45-1 1v1Z"></path></svg></span><span class="project-name">Ungrouped</span></div>
+      </section>
+    </main>
+
+    <footer class="account-bar">
+      <div class="account">
+        <img class="avatar" src="assets/avatar.png" alt="何振东的真实头像">
+        <span class="account-name">何振东</span>
+      </div>
+      <div class="account-tools">
+        <button class="icon-button" aria-label="插件与自动化">
+          <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6.25 2.75v3M11.75 2.75v3M4 5.75h10v3.5a5 5 0 0 1-10 0v-3.5ZM9 14.25v2"></path></svg>
+        </button>
+        <button class="icon-button" aria-label="历史">
+          <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3.1 6.25A6.25 6.25 0 1 1 2.75 9M2.75 3.25v3.5h3.5"></path><path d="M9 5.25V9l2.5 1.5"></path></svg>
+        </button>
+        <button class="icon-button" aria-label="应用网格">
+          <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.75" y="2.75" width="4" height="4" rx="0.75"></rect><rect x="11.25" y="2.75" width="4" height="4" rx="0.75"></rect><rect x="2.75" y="11.25" width="4" height="4" rx="0.75"></rect><rect x="11.25" y="11.25" width="4" height="4" rx="0.75"></rect></svg>
+        </button>
+      </div>
+    </footer>
+  </aside>
+</body>
+</html>

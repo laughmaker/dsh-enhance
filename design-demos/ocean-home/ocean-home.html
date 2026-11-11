@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1167, initial-scale=1.0">
+<title>大海 · 空会话首页静态初稿</title>
+<style>
+  /* ---------------------------------------------------------------
+     大海版首页 · 静态高保真初稿（清晨冷蓝 / 半沉 / 液态玻璃 / 剪影鲸）
+     锚点：--sea-level 必须等于输入框的水平中线（top 433 + height 112/2 = 489）。
+     落入插件时由 JS 实测输入框 rect 写入该变量，ResizeObserver 跟随。
+     层级：玻璃 5 < 全宽水线 6 < 文字与按钮 7，三者为 scene 同级，
+     避免输入框容器形成层叠上下文后把内容压到水下。
+     --------------------------------------------------------------- */
+  :root {
+    --sea-level: 489px;
+    --ink: #0a3a62;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    width: 1167px; height: 898px; margin: 0; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .scene { position: relative; width: 1167px; height: 898px; overflow: hidden; }
+
+  /* ---------- 0 天空：清晨冷蓝 ---------- */
+  .sky {
+    position: absolute; inset: 0 0 auto 0; height: var(--sea-level); z-index: 0;
+    background: linear-gradient(180deg,
+      #78b5de 0%, #96c9e7 26%, #bcdcf0 52%, #dceef4 78%, #f0f8f6 100%);
+  }
+  .sun-glow {
+    position: absolute; left: 640px; top: -190px; width: 900px; height: 760px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(255, 251, 232, .90) 0%, rgba(255, 247, 220, .40) 26%,
+      rgba(255, 244, 214, .10) 52%, transparent 72%);
+    animation: glow 14s ease-in-out infinite alternate;
+  }
+  .sun {
+    position: absolute; left: 1002px; top: 132px; width: 74px; height: 74px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 38%, #fffdf3 0%, #fff4d6 48%, rgba(255, 240, 205, 0) 72%);
+    box-shadow: 0 0 70px 30px rgba(255, 246, 216, .32);
+  }
+  .cloud { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, .5); filter: blur(9px); }
+  .c1 { top: 118px; width: 380px; height: 34px; opacity: .66; animation: drift 90s linear infinite -32s; }
+  .c2 { top: 196px; width: 300px; height: 24px; opacity: .48; animation: drift-back 120s linear infinite -70s; }
+  .c3 { top: 88px;  width: 440px; height: 28px; opacity: .42; animation: drift 105s linear infinite -52s; }
+  .c4 { top: 286px; width: 260px; height: 18px; opacity: .38; animation: drift-back 140s linear infinite -100s; }
+  .birds { position: absolute; left: 250px; top: 236px; width: 160px; height: 34px; opacity: .45; animation: drift 160s linear infinite -60s; }
+
+  /* ---------- 2 海水主体 ---------- */
+  .sea {
+    position: absolute; left: 0; right: 0; top: var(--sea-level); bottom: 0; z-index: 1;
+    background: linear-gradient(180deg,
+      #63b0cd 0%, #3d97c4 9%, #2278ac 26%, #125c95 48%, #0a4277 72%, #062c56 100%);
+  }
+  .caustic {
+    position: absolute; top: -40px; height: 560px; width: 130px;
+    background: linear-gradient(180deg, rgba(226, 246, 255, .16), rgba(226, 246, 255, 0) 82%);
+    transform: skewX(-17deg); filter: blur(9px);
+    animation: sway 12s ease-in-out infinite alternate;
+  }
+  .ca1 { left: 170px; }
+  .ca2 { left: 520px; width: 90px; opacity: .7;  animation-duration: 17s; animation-delay: -4s; }
+  .ca3 { left: 880px; width: 160px; opacity: .55; animation-duration: 21s; animation-delay: -9s; }
+  .bubble {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(226, 246, 255, .5); background: rgba(226, 246, 255, .12);
+    animation: rise 9s linear infinite;
+  }
+  .b1 { left: 8%;  bottom: 20px; width: 7px; height: 7px; animation-delay: -1s; }
+  .b2 { left: 21%; bottom: 20px; width: 4px; height: 4px; animation-delay: -5s; animation-duration: 12s; }
+  .b3 { left: 47%; bottom: 20px; width: 9px; height: 9px; animation-delay: -7s; animation-duration: 14s; }
+  .b4 { left: 71%; bottom: 20px; width: 5px; height: 5px; animation-delay: -3s; animation-duration: 11s; }
+  .b5 { left: 89%; bottom: 20px; width: 6px; height: 6px; animation-delay: -9s; animation-duration: 13s; }
+
+  /* ---------- 鲸鱼：简约剪影 ---------- */
+  .whale { position: absolute; z-index: 2; }
+  .whale svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .whale-inner { position: relative; animation: bob 5s ease-in-out infinite; }
+  .whale--far {
+    left: 58%; top: 26%; width: 168px; opacity: .52; filter: blur(1px);
+    animation: swim-right 38s linear infinite -14s;
+  }
+  .whale--far .whale-inner { animation-duration: 6s; }
+  .whale--far svg path { fill: #12507f; }
+  .whale--near {
+    left: 18%; top: 42%; width: 340px; opacity: .9;
+    animation: swim-left 27s linear infinite -11s;
+  }
+  .whale--near svg path { fill: #073a68; }
+  .whale--near svg .fin { fill: #0a4a7e; }
+  .whale--near svg .eye { fill: rgba(226, 246, 255, .85); }
+  .spout {
+    position: absolute; left: 18%; top: -34px; width: 46px; height: 40px;
+    animation: spout 8s ease-in-out infinite -5.6s;
+  }
+  .spout i {
+    position: absolute; bottom: 0; width: 2px; border-radius: 2px;
+    background: linear-gradient(180deg, rgba(240, 250, 255, 0), rgba(240, 250, 255, .85));
+  }
+  .spout i:nth-child(1) { left: 6px;  height: 28px; transform: rotate(-16deg); }
+  .spout i:nth-child(2) { left: 20px; height: 38px; }
+  .spout i:nth-child(3) { left: 34px; height: 26px; transform: rotate(16deg); }
+
+  /* ---------- 地平线雾带 ---------- */
+  .horizon-haze {
+    position: absolute; left: 0; right: 0; top: calc(var(--sea-level) - 52px); height: 76px;
+    z-index: 2; filter: blur(3px);
+    background: linear-gradient(180deg, transparent, rgba(240, 249, 248, .60) 62%, transparent);
+  }
+
+  /* ---------- 4 四层波浪（界面之后） ---------- */
+  .waves {
+    position: absolute; left: 0; right: 0; top: calc(var(--sea-level) - 46px);
+    height: 260px; overflow: hidden; z-index: 3; pointer-events: none;
+    /* 向下羽化，消除波浪层与深水渐变的水平硬边 */
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 34%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 34%, transparent 100%);
+  }
+  .wave { position: absolute; left: 0; top: 0; width: 2334px; height: 260px; }
+  .wave svg { display: block; width: 2334px; height: 260px; }
+  .w1 { animation: slide 7s  linear infinite -2s;        opacity: .70; }
+  .w2 { animation: slide 11s linear infinite -5s reverse; opacity: .58; }
+  .w3 { animation: slide 15s linear infinite -8s;         opacity: .52; }
+  .w4 { animation: slide 21s linear infinite -13s reverse; opacity: .48; }
+  .wf { animation: slide 7s linear infinite -2s; opacity: .85; }
+
+  /* ---------- 5 全宽水线：盖在玻璃之上、内容之下，正好穿过输入框中线 ---------- */
+  .surface {
+    position: absolute; left: 0; right: 0; top: calc(var(--sea-level) - 16px);
+    height: 44px; z-index: 6; pointer-events: none;
+    animation: surface-bob 7s ease-in-out infinite;
+  }
+  .surface svg { display: block; width: 1167px; height: 44px; }
+  .foam {
+    position: absolute; border-radius: 50%; background: #fff;
+    box-shadow: 0 0 7px rgba(255, 255, 255, .85);
+    animation: foam 4.5s ease-out infinite;
+  }
+  .f1 { left: 9%;  top: 15px; width: 5px; height: 5px; animation-delay: -.4s; }
+  .f2 { left: 17%; top: 8px;  width: 3px; height: 3px; animation-delay: -3.6s; }
+  .f3 { left: 27%; top: 9px;  width: 4px; height: 4px; animation-delay: -2.1s; }
+  .f4 { left: 36%; top: 16px; width: 3px; height: 3px; animation-delay: -1.7s; }
+  .f5 { left: 44%; top: 18px; width: 6px; height: 6px; animation-delay: -1.2s; }
+  .f6 { left: 55%; top: 10px; width: 3px; height: 3px; animation-delay: -4.0s; }
+  .f7 { left: 63%; top: 11px; width: 4px; height: 4px; animation-delay: -3.3s; }
+  .f8 { left: 72%; top: 17px; width: 3px; height: 3px; animation-delay: -.6s; }
+  .f9 { left: 81%; top: 17px; width: 5px; height: 5px; animation-delay: -.9s; }
+  .f10 { left: 88%; top: 9px; width: 3px; height: 3px; animation-delay: -2.3s; }
+  .f11 { left: 94%; top: 12px; width: 4px; height: 4px; animation-delay: -2.7s; }
+
+  /* ---------- 玻璃壳：只做背景、折射与边缘光，不承载任何文字 ---------- */
+  .composer-glass {
+    position: absolute; left: 144px; top: 433px; width: 869px; height: 112px;
+    border-radius: 28px; z-index: 5; pointer-events: none;
+  }
+  /* 液态玻璃：本体近乎无色，颜色来自背景；靠折射、边缘透镜与镜面高光塑形 */
+  .glass {
+    position: absolute; inset: 0; border-radius: inherit;
+    background:
+      radial-gradient(ellipse 75% 130% at 50% 38%, rgba(255, 255, 255, .10), rgba(6, 48, 88, .05) 78%),
+      linear-gradient(180deg,
+        rgba(255, 255, 255, .08) 0%, rgba(255, 255, 255, .02) 48%,
+        rgba(255, 255, 255, .05) 100%);
+    /* 浅色天空上的玻璃要略压暗才浮得出来，而不是被提亮到消失 */
+    -webkit-backdrop-filter: blur(16px) saturate(1.6) brightness(.94);
+    backdrop-filter: blur(16px) saturate(1.6) brightness(.94);
+    border: 1px solid rgba(255, 255, 255, .48);
+    box-shadow:
+      /* 顶部亮倒角 / 底部暗倒角：玻璃厚度 */
+      inset 0 1.5px 1px rgba(255, 255, 255, .95),
+      inset 0 -1.5px 1px rgba(6, 48, 88, .22),
+      inset 1px 0 1px rgba(255, 255, 255, .55),
+      inset -1px 0 1px rgba(255, 255, 255, .30),
+      inset 0 0 0 1px rgba(255, 255, 255, .10),
+      /* 接触阴影 + 悬浮投影 + 外发光 */
+      0 1px 2px rgba(6, 45, 85, .14),
+      0 24px 58px rgba(5, 42, 80, .34),
+      0 0 0 1px rgba(255, 255, 255, .12);
+  }
+  /* 边缘透镜环：只留外圈 18px，给边缘更强折射，中心保持清晰 */
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 18px;
+    -webkit-backdrop-filter: url(#lg-warp-soft) blur(10px) brightness(1.22) saturate(1.5);
+    backdrop-filter: url(#lg-warp-soft) blur(10px) brightness(1.22) saturate(1.5);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* 镜面边框：亮度随角度变化，带极轻的冷暖色散 */
+  .glass::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+    background: conic-gradient(from 215deg at 50% 50%,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 252, 240, .74) 38deg,
+      rgba(255, 255, 255, .12) 85deg,
+      rgba(255, 255, 255, 0) 145deg,
+      rgba(214, 240, 255, .30) 235deg,
+      rgba(220, 244, 255, .82) 300deg,
+      rgba(255, 255, 255, 0) 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* 常驻镜面高光：斜向宽光带只做轻微摆动，不扫出玻璃 */
+  .sheen {
+    position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+    background: linear-gradient(96deg,
+      transparent 16%,
+      rgba(255, 255, 255, .08) 28%,
+      rgba(255, 255, 255, .46) 42%,
+      rgba(255, 255, 255, .14) 54%,
+      transparent 68%);
+    background-size: 230% 100%;
+    animation: sheen-sweep 11s ease-in-out infinite;
+    opacity: .95;
+  }
+  /* 边缘棱镜：四边高光带、圆角聚光，以及水面在玻璃内壁的反射 */
+  .rim {
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .82) 0, rgba(255, 255, 255, .20) 5px, transparent 19px),
+      linear-gradient(0deg, rgba(186, 232, 255, .42) 0, transparent 15px),
+      linear-gradient(90deg, rgba(255, 255, 255, .52) 0, transparent 19px),
+      linear-gradient(270deg, rgba(214, 240, 255, .34) 0, transparent 19px),
+      radial-gradient(ellipse 76px 76px at 0 0, rgba(255, 255, 255, .72), transparent 72%),
+      radial-gradient(ellipse 88px 88px at 100% 0, rgba(226, 246, 255, .60), transparent 72%),
+      radial-gradient(ellipse 76px 76px at 0 100%, rgba(180, 226, 250, .36), transparent 72%),
+      linear-gradient(180deg, transparent 46%, rgba(255, 255, 255, .26) 50%, transparent 55%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, .52),
+      inset 0 2px 3px rgba(255, 255, 255, .32),
+      inset 0 -2px 3px rgba(6, 48, 88, .10);
+  }
+  /* 水下：不再染色，只让海水透过玻璃被轻微压暗、增饱和并带柔光斑 */
+  .submerge {
+    position: absolute; left: 0; right: 0; top: 50%; bottom: 0;
+    border-radius: 0 0 28px 28px;
+    background:
+      radial-gradient(ellipse 240px 60px at 22% 30%, rgba(255, 255, 255, .10), transparent 70%),
+      radial-gradient(ellipse 300px 70px at 76% 72%, rgba(255, 255, 255, .07), transparent 70%),
+      linear-gradient(180deg, rgba(255, 255, 255, .02), rgba(8, 72, 126, .12));
+    -webkit-backdrop-filter: url(#lg-warp) blur(3px) saturate(1.3) brightness(1);
+    backdrop-filter: url(#lg-warp) blur(3px) saturate(1.3) brightness(1);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px);
+    mask-image: linear-gradient(180deg, transparent 0, #000 14px);
+    box-shadow: inset 0 1px 0 rgba(226, 246, 255, .6);
+  }
+
+  /* ---------- 7 界面内容与周边按钮：独立成层，永不被折射或水线削弱 ---------- */
+  .topbar {
+    position: absolute; left: 152px; right: 152px; top: 398px; height: 25px;
+    display: flex; align-items: center; justify-content: space-between; z-index: 7;
+  }
+  .group { display: flex; align-items: center; gap: 10px; }
+  /* 默认：无框文字工具栏。完整描边胶囊会像 disabled 输入框，所以只留字色与文字阴影 */
+  .pill, .add, .mic {
+    position: relative;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(0px) saturate(1) brightness(1);
+    backdrop-filter: blur(0px) saturate(1) brightness(1);
+    color: rgba(8, 50, 86, .80);
+    text-shadow: 0 1px 1px rgba(255, 255, 255, .80);
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease,
+                -webkit-backdrop-filter .2s ease, backdrop-filter .2s ease, transform .2s ease;
+  }
+  /* hover / 键盘焦点 / 触屏按下 / 演示态：低对比液态玻璃浮现，不做实心亮块 */
+  :is(.pill, .add, .mic):is(:hover, :focus-visible, :active, .force-hover) {
+    background: rgba(255, 255, 255, .22);
+    border-color: rgba(255, 255, 255, .50);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .82),
+      inset 0 -1px 0 rgba(6, 48, 88, .08),
+      0 3px 10px rgba(5, 48, 90, .16);
+    -webkit-backdrop-filter: blur(12px) saturate(1.45) brightness(1.03);
+    backdrop-filter: blur(12px) saturate(1.45) brightness(1.03);
+    transform: translateY(-1px);
+  }
+  :is(.pill, .add, .mic):focus-visible {
+    outline: 2px solid rgba(10, 58, 96, .45); outline-offset: 3px;
+  }
+  /* 镜面边框随玻璃一起浮现，亮度压低避免白圈刺眼 */
+  .pill::after, .add::after, .mic::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: conic-gradient(from 215deg,
+      rgba(255, 255, 255, 0) 0deg, rgba(255, 252, 240, .55) 42deg,
+      rgba(255, 255, 255, .05) 100deg, rgba(255, 255, 255, 0) 150deg,
+      rgba(214, 240, 255, .35) 290deg, rgba(255, 255, 255, 0) 355deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0; transition: opacity .2s ease;
+    pointer-events: none;
+  }
+  :is(.pill, .add, .mic):is(:hover, :focus-visible, :active, .force-hover)::after { opacity: 1; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px;
+    border-radius: 14px; font-size: 12.5px; font-weight: 500; letter-spacing: .1px; white-space: nowrap;
+  }
+  .pill svg { width: 15px; height: 15px; flex: 0 0 15px; }
+  .topbar .pill { height: 24px; padding: 0 8px; font-size: 12px; }
+  .pill .chev { opacity: .55; width: 9px; height: 9px; flex: 0 0 9px; }
+
+  .composer-content {
+    position: absolute; left: 144px; top: 433px; width: 869px; height: 112px;
+    z-index: 7; padding: 18px 20px 14px;
+  }
+  .placeholder {
+    margin: 0; font-size: 15px; line-height: 20px; letter-spacing: .1px;
+    color: rgba(8, 50, 86, .66);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
+  }
+  .tools {
+    position: absolute; left: 18px; right: 16px; bottom: 13px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .add, .mic {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  }
+  .add svg { width: 15px; height: 15px; }
+  .mic svg { width: 16px; height: 16px; }
+  /* 发送是主操作锚点，常驻但收敛尺寸与描边，箭头改用 SVG 保证基线 */
+  .send {
+    width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    color: #fff;
+    background:
+      linear-gradient(150deg, rgba(255, 255, 255, .34) 0, transparent 42%),
+      linear-gradient(158deg, #9bd8f2 0%, #4aa6dc 48%, #1c79b9 100%);
+    border: 1px solid rgba(255, 255, 255, .62);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .85),
+      inset 0 -2px 5px rgba(6, 60, 110, .22),
+      0 5px 14px rgba(6, 56, 105, .34);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .send svg { width: 18px; height: 18px; }
+  .send:hover, .send:focus-visible {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .85),
+      inset 0 -2px 5px rgba(6, 60, 110, .22),
+      0 8px 20px rgba(6, 56, 105, .44);
+  }
+
+  /* ---------- 动效 ---------- */
+  @keyframes slide   { from { transform: translateX(0); }      to { transform: translateX(-50%); } }
+  @keyframes drift   { from { transform: translateX(-460px); }  to { transform: translateX(1250px); } }
+  @keyframes drift-back { from { transform: translateX(1250px); } to { transform: translateX(-460px); } }
+  @keyframes glow    { from { opacity: .78; } to { opacity: 1; } }
+  @keyframes sway    { from { transform: skewX(-17deg) translateX(-22px); opacity: .55; }
+                       to   { transform: skewX(-11deg) translateX(24px);  opacity: 1; } }
+  @keyframes rise    { 0% { transform: translateY(0) scale(.85); opacity: 0; }
+                       12% { opacity: .8; }
+                       100% { transform: translateY(-380px) scale(1.15); opacity: 0; } }
+  @keyframes foam    { 0% { transform: translateY(4px) scale(.7); opacity: 0; }
+                       25% { opacity: .9; }
+                       100% { transform: translateY(-14px) scale(1.5); opacity: 0; } }
+  @keyframes bob     { 0%, 100% { transform: translateY(0) rotate(-1.6deg); }
+                       50%      { transform: translateY(-9px) rotate(1.6deg); } }
+  @keyframes swim-left  { from { transform: translateX(1250px); } to { transform: translateX(-460px); } }
+  @keyframes swim-right { from { transform: translateX(-460px) scaleX(-1); } to { transform: translateX(1250px) scaleX(-1); } }
+  @keyframes spout   { 0%, 62% { opacity: 0; transform: translateY(6px) scale(.8); }
+                       72% { opacity: .9; }
+                       100% { opacity: 0; transform: translateY(-14px) scale(1.25); } }
+  @keyframes surface-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes sheen-sweep { 0%, 100% { background-position: 58% 0; } 50% { background-position: 42% 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; }
+    .spout { opacity: .55; }
+    .whale--near { transform: translateX(520px); }
+    .whale--far  { transform: translateX(180px) scaleX(-1); }
+    :is(.pill, .add, .mic) { transition-duration: .01ms; }
+    :is(.pill, .add, .mic):is(:hover, :focus-visible, :active, .force-hover) { transform: none; }
+    .send:hover, .send:focus-visible { transform: none; }
+  }
+</style>
+</head>
+<body>
+<!-- 液体折射滤镜：给玻璃边缘与水下部分提供真实的背景位移扭曲 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="lg-warp" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.008 0.022" numOctaves="2" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="lg-warp-soft" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.010 0.026" numOctaves="2" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<div class="scene">
+
+  <!-- 0 天空 -->
+  <div class="sky">
+    <div class="sun-glow"></div>
+    <div class="sun"></div>
+    <div class="cloud c1"></div><div class="cloud c2"></div>
+    <div class="cloud c3"></div><div class="cloud c4"></div>
+    <svg class="birds" viewBox="0 0 160 34" fill="none" stroke="#3f6d90" stroke-width="1.6" stroke-linecap="round">
+      <path d="M6 16 q7 -8 14 0 q7 -8 14 0"/><path d="M52 8 q5 -6 10 0 q5 -6 10 0"/>
+      <path d="M96 21 q6 -7 12 0 q6 -7 12 0"/><path d="M134 12 q4 -5 8 0 q4 -5 8 0"/>
+    </svg>
+  </div>
+
+  <!-- 2 海水 -->
+  <div class="sea">
+    <div class="caustic ca1"></div><div class="caustic ca2"></div><div class="caustic ca3"></div>
+    <div class="bubble b1"></div><div class="bubble b2"></div><div class="bubble b3"></div>
+    <div class="bubble b4"></div><div class="bubble b5"></div>
+
+    <!-- 远景鲸（朝右，翻转 + 模糊做景深） -->
+    <div class="whale whale--far">
+      <div class="whale-inner">
+        <svg viewBox="0 0 320 150" aria-hidden="true">
+          <path d="M8 84 C8 56 36 36 82 33 C132 29 192 39 234 53 C248 57 258 61 268 65 L302 42 C308 38 314 41 317 47 C312 58 305 64 294 68 L317 100 C311 105 304 102 297 95 C288 84 278 76 266 74 C246 98 186 122 128 118 C68 114 22 102 8 84 Z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 近景鲸（朝左，带背鳍、胸鳍、眼与喷水） -->
+    <div class="whale whale--near">
+      <div class="whale-inner">
+        <div class="spout"><i></i><i></i><i></i></div>
+        <svg viewBox="0 0 320 150" aria-hidden="true">
+          <path d="M8 84 C8 56 36 36 82 33 C132 29 192 39 234 53 C248 57 258 61 268 65 L302 42 C308 38 314 41 317 47 C312 58 305 64 294 68 L317 100 C311 105 304 102 297 95 C288 84 278 76 266 74 C246 98 186 122 128 118 C68 114 22 102 8 84 Z"/>
+          <path class="fin" d="M168 35 C172 23 180 18 189 21 C184 29 180 33 178 36 Z"/>
+          <path class="fin" d="M122 112 C130 130 148 140 170 137 C160 121 146 113 136 109 Z"/>
+          <circle class="eye" cx="44" cy="76" r="2.8"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 地平线雾带 -->
+  <div class="horizon-haze"></div>
+
+  <!-- 4 四层波浪（界面之后） -->
+  <div class="waves">
+    <div class="wave w4"><svg viewBox="0 0 2334 260" preserveAspectRatio="none">
+      <path fill="#2479ae" d="M0 64 Q240 44 480 64 T960 64 T1440 64 T1920 64 T2400 64 L2334 260 L0 260 Z"/></svg></div>
+    <div class="wave w3"><svg viewBox="0 0 2334 260" preserveAspectRatio="none">
+      <path fill="#4fa7ce" d="M0 56 Q165 34 330 56 T660 56 T990 56 T1320 56 T1650 56 T1980 56 T2310 56 L2334 260 L0 260 Z"/></svg></div>
+    <div class="wave w2"><svg viewBox="0 0 2334 260" preserveAspectRatio="none">
+      <path fill="#8fcde4" d="M0 48 Q195 24 390 48 T780 48 T1170 48 T1560 48 T1950 48 T2340 48 L2334 260 L0 260 Z"/></svg></div>
+    <div class="wave w1"><svg viewBox="0 0 2334 260" preserveAspectRatio="none">
+      <path fill="#c6eaf4" d="M0 40 Q145 12 290 40 T580 40 T870 40 T1160 40 T1450 40 T1740 40 T2030 40 T2320 40 L2334 260 L0 260 Z"/></svg></div>
+    <!-- 波峰白沫：与最前一层同相位 -->
+    <div class="wave wf"><svg viewBox="0 0 2334 260" preserveAspectRatio="none">
+      <path fill="none" stroke="rgba(255,255,255,.72)" stroke-width="2.4"
+        d="M0 40 Q145 12 290 40 T580 40 T870 40 T1160 40 T1450 40 T1740 40 T2030 40 T2320 40"/></svg></div>
+  </div>
+
+  <!-- 5 玻璃壳 -->
+  <div class="composer-glass">
+    <div class="glass"></div>
+    <div class="sheen"></div>
+    <div class="rim"></div>
+    <div class="submerge"></div>
+  </div>
+
+  <!-- 6 全宽水线：穿过输入框中线，在玻璃之上、内容之下 -->
+  <div class="surface">
+    <svg viewBox="0 0 1167 44" preserveAspectRatio="none">
+      <path fill="none" stroke="rgba(255,255,255,.80)" stroke-width="5" style="filter:blur(2px)"
+        d="M0 18 Q145 6 290 18 T580 18 T870 18 T1160 18"/>
+      <path fill="none" stroke="rgba(255,255,255,.96)" stroke-width="1.7"
+        d="M0 18 Q145 6 290 18 T580 18 T870 18 T1160 18"/>
+      <path fill="none" stroke="rgba(190,235,250,.55)" stroke-width="1"
+        d="M0 25 Q145 13 290 25 T580 25 T870 25 T1160 25"/>
+    </svg>
+    <span class="foam f1"></span><span class="foam f2"></span><span class="foam f3"></span>
+    <span class="foam f4"></span><span class="foam f5"></span><span class="foam f6"></span>
+    <span class="foam f7"></span><span class="foam f8"></span><span class="foam f9"></span>
+    <span class="foam f10"></span><span class="foam f11"></span>
+  </div>
+
+  <!-- 7 顶部信息：浅天空上改用深字 + 玻璃胶囊 -->
+  <header class="topbar">
+    <div class="group">
+      <span class="pill"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4.5h4l1.5 1.5h7.5v7h-13z"/></svg>dsh-enhance</span>
+      <span class="pill"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.2v3l2 1.2"/></svg>Standard mode<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.6l3 3 3-3"/></svg></span>
+    </div>
+    <div class="group">
+      <span class="pill"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M4 5.8v3.4a2.8 2.8 0 0 0 2.8 2.8H12"/></svg>main</span>
+      <span class="pill"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/></svg>New worktree</span>
+    </div>
+  </header>
+
+  <!-- 7 输入框内容：文字与所有周边按钮 -->
+  <div class="composer-content">
+    <p class="placeholder">Describe what you want to build, / commands, @ files or sessions</p>
+    <div class="tools">
+      <div class="group">
+        <span class="add"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></span>
+        <span class="pill"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5l5 2v4.2c0 3.2-2.1 5.6-5 6.8-2.9-1.2-5-3.6-5-6.8V3.5z"/></svg>Full access<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.6l3 3 3-3"/></svg></span>
+        <span class="pill"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1.4 4.6L14 7l-4.6 1.4L8 13l-1.4-4.6L2 7l4.6-1.4z"/></svg>Plus</span>
+      </div>
+      <div class="group">
+        <span class="pill">Hy4 · WorkBuddy AI Default<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.6l3 3 3-3"/></svg></span>
+        <span class="mic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="7" y="2" width="6" height="10" rx="3"/><path d="M4 9.5a6 6 0 0 0 12 0M10 15.5V18"/></svg></span>
+        <span class="send"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15.5V4.8M10 4.8 5.8 9M10 4.8 14.2 9"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

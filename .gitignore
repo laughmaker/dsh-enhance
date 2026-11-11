@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 # Build output, produced by `npm run build` and shipped in the npm tarball.
 lib/
+
+# Python bytecode cache (script/cdp_eval.py)
+__pycache__/

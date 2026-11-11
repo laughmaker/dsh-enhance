@@ -19,6 +19,7 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller'
 import { installStyles } from './styles.ts'
+import { installWhaleBubbles } from './whale-bubbles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installSectionStats } from './section-stats.ts'
@@ -58,6 +59,9 @@ export function apply(ctx: Context): void {
   const t: TranslateNS<typeof LOCALE_NS> = ctx.locale.bind(LOCALE_NS)
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
+  // The whale on the empty page swims through a trail of small bubbles. The
+  // bubbles are drawn by the stylesheet; this only lets them go at the fish.
+  ctx.effect(() => installWhaleBubbles(document), 'dsh-enhance: whale bubbles')
   ctx.effect(() => installFileMenu(ctx, t), 'dsh-enhance: file context menu')
   // The sidebar's minimum width is a module constant in the layout package, so the
   // drag gesture is taken over to allow 50px below it. The same module opens the

@@ -313,9 +313,18 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
 
 /* The send button only looks solid while the pointer is over it: the host
  * fades it while disabled and swaps its fill for a darker one on hover. It keeps
- * the solid fill whenever it can be clicked, and stays faded when it cannot. */
+ * the solid fill whenever it can be clicked, and stays faded when it cannot.
+ *
+ * While it can be clicked it is a solid disc of the deep blue with a white
+ * arrow. The host's dark theme paints it in the pale accent instead, which
+ * reads as a washed-out pill; the light theme already uses the deep blue, so
+ * naming the static token makes the button look the same in both. */
 .JZLxKW_primary:not(:disabled) {
-  background: var(--dsw-alias-button-info-fill) !important;
+  background: var(--dsw-static-deepseek-500) !important;
+  color: #fff !important;
+}
+.JZLxKW_primary:not(:disabled):hover {
+  background: var(--dsw-static-deepseek-400) !important;
 }
 
 /* The Preview chip and the "Into the Unknown" line are labels, not controls.
@@ -329,125 +338,116 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
   border-radius: var(--dsw-radius-xl) !important;
 }
 
-/* The little whale above the headline only fidgets while hovered. It roams the
- * open water of the row instead of shuttling on one line: it darts, coasts,
- * climbs and dips, and bounces off each end. The facing and the travel live on
- * different elements, because scaling the element that moves squashes it flat. */
+/* The whale swims the way a whale swims: one long, unhurried passage across
+ * the open water of the headline row, a slow rise and fall, and two wide turns
+ * at the ends of the row. The previous version darted between the edges every
+ * few hundred milliseconds, which read as a fish being startled rather than one
+ * making its way.
+ *
+ * Travel and body share one element and one transform. With the scale on a
+ * parent, the parent's scale also scales the child's translation, so the
+ * whale collapsed back to the start of the row while it turned. Here the turn
+ * is a dip to edge-on inside the same transform as the swim, and the fish
+ * never leaves the path it is swimming.
+ *
+ * The host draws the fish facing left, so the sign of the scale carries the
+ * facing: mirrored while it swims right, upright while it swims left. The
+ * rotations are negated in the mirrored stretch, because a mirrored element
+ * turns the other way on screen. */
 @keyframes dsh-enhance-whale-travel {
   0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  7% {
-    transform: translate(18px, 12px) rotate(9deg);
-  }
-  16% {
-    transform: translate(-150px, -24px) rotate(-15deg);
-  }
-  23% {
-    transform: translate(-118px, 6px) rotate(8deg);
-  }
-  34% {
-    transform: translate(-300px, -16px) rotate(-5deg);
-  }
-  44% {
-    transform: translate(-206px, 14px) rotate(12deg);
-  }
-  54% {
-    transform: translate(-90px, -22px) rotate(-11deg);
-  }
-  66% {
-    transform: translate(-246px, 10px) rotate(7deg);
-  }
-  78% {
-    transform: translate(-54px, -18px) rotate(-13deg);
-  }
-  90% {
-    transform: translate(16px, 8px) rotate(10deg);
-  }
-  100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-}
-/* The body itself flexes. The wide frames stretch it nose to tail and the
- * tall frames bunch it up, while the sign keeps the nose pointing the way it
- * is going. It lives on the wrapper, away from the travel, so the stretch
- * never flattens the fish as it crosses its own centre. */
-@keyframes dsh-enhance-whale-flex {
-  0%,
-  4% {
-    transform: scale(1.16, 0.86);
+    transform: translate(0, 0) rotate(0deg) scale(-1.05, 0.96);
   }
   8% {
-    transform: scale(-1.16, 0.86);
-  }
-  12% {
-    transform: scale(-0.84, 1.18);
+    transform: translate(66px, -14px) rotate(3deg) scale(-1.05, 0.96);
   }
   16% {
-    transform: scale(1.16, 0.86);
-  }
-  20% {
-    transform: scale(0.84, 1.18);
+    transform: translate(140px, -6px) rotate(-2deg) scale(-0.97, 1.04);
   }
   24% {
-    transform: scale(-1.16, 0.86);
-  }
-  28% {
-    transform: scale(-0.84, 1.18);
+    transform: translate(212px, -18px) rotate(3deg) scale(-1.05, 0.96);
   }
   32% {
-    transform: scale(-1.16, 0.86);
-  }
-  36% {
-    transform: scale(0.84, 1.18);
+    transform: translate(280px, -8px) rotate(-2deg) scale(-0.97, 1.04);
   }
   40% {
-    transform: scale(1.16, 0.86);
+    transform: translate(336px, 8px) rotate(-5deg) scale(-1.05, 0.96);
   }
-  44% {
-    transform: scale(0.84, 1.18);
+  47% {
+    transform: translate(368px, 30px) rotate(-11deg) scale(-0.97, 1.04);
   }
-  48% {
-    transform: scale(1.16, 0.86);
+  50% {
+    transform: translate(378px, 42px) rotate(-13deg) scale(-0.5, 1);
   }
   52% {
-    transform: scale(0.84, 1.18);
+    transform: translate(372px, 48px) rotate(-12deg) scale(-0.06, 1.05);
   }
-  56% {
-    transform: scale(-1.16, 0.86);
+  54% {
+    transform: translate(358px, 52px) rotate(-8deg) scale(0.06, 1.05);
   }
-  60% {
-    transform: scale(-0.84, 1.18);
+  57% {
+    transform: translate(330px, 56px) rotate(4deg) scale(1.05, 0.96);
   }
-  64% {
-    transform: scale(-1.16, 0.86);
+  63% {
+    transform: translate(272px, 58px) rotate(3deg) scale(0.97, 1.04);
   }
-  68% {
-    transform: scale(0.84, 1.18);
+  71% {
+    transform: translate(196px, 54px) rotate(5deg) scale(1.05, 0.96);
   }
-  72% {
-    transform: scale(1.16, 0.86);
+  78% {
+    transform: translate(134px, 44px) rotate(7deg) scale(0.97, 1.04);
   }
-  76% {
-    transform: scale(0.84, 1.18);
+  86% {
+    transform: translate(58px, 26px) rotate(8deg) scale(1.05, 0.96);
   }
-  80% {
-    transform: scale(1.16, 0.86);
+  93% {
+    transform: translate(10px, 4px) rotate(6deg) scale(0.97, 1.04);
   }
-  84% {
-    transform: scale(0.84, 1.18);
+  95% {
+    transform: translate(-14px, -12px) rotate(4deg) scale(0.2, 1.02);
   }
-  88% {
-    transform: scale(1.16, 0.86);
-  }
-  92% {
-    transform: scale(-0.84, 1.18);
-  }
-  96% {
-    transform: scale(-1.16, 0.86);
+  98% {
+    transform: translate(-8px, -10px) rotate(-3deg) scale(-0.2, 1.02);
   }
   100% {
-    transform: scale(-0.84, 1.18);
+    transform: translate(0, 0) rotate(0deg) scale(-1.05, 0.96);
+  }
+}
+/* The bubbles the whale leaves behind. Each one is let go at the fish, rises,
+ * swells on the way up, and pops: the last stretch of the keyframe opens the
+ * ring and fades it out. */
+.dsh-enhance-bubble {
+  position: fixed;
+  border-radius: 50%;
+  border: 1px solid rgba(72, 132, 180, 0.42);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.98), rgba(186, 220, 242, 0.42) 72%);
+  pointer-events: none;
+  z-index: 30;
+  animation: dsh-enhance-bubble 2.6s cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+}
+body[data-ds-dark-theme] .dsh-enhance-bubble {
+  border-color: rgba(186, 224, 255, 0.5);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.52), rgba(200, 230, 255, 0.08) 72%);
+}
+@keyframes dsh-enhance-bubble {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.85;
+  }
+  60% {
+    transform: translate(2px, -30px) scale(1);
+    opacity: 0.8;
+  }
+  80% {
+    transform: translate(-2px, -48px) scale(1.14);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(1px, -62px) scale(2.1);
+    opacity: 0;
   }
 }
 /* The headline row is only as wide as its contents, which leaves the whale
@@ -474,12 +474,9 @@ export const css = String.raw`[class*="sidebarCol"] [class*="_root"] { position:
   --dsw-corner-shape: superellipse(1) !important;
 }
 @media (prefers-reduced-motion: no-preference) {
-  ._8tPydW_fishHitbox {
-    animation: dsh-enhance-whale-flex 9s linear infinite !important;
-    transform-origin: 50% 60% !important;
-  }
   ._8tPydW_fish {
-    animation: dsh-enhance-whale-travel 9s linear infinite !important;
+    animation: dsh-enhance-whale-travel 24s linear infinite !important;
+    transform-origin: 50% 60% !important;
   }
 }
 `

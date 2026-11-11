@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workspaces 侧栏 · 三方向对比</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1416px; min-height: 100%; background: #111214; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; color: #ececee; }
+  main { width: 1416px; padding: 42px 40px 38px; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 30px; }
+  .eyebrow { color: #8c9099; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 9px; }
+  h1 { font-size: 26px; line-height: 1.2; letter-spacing: -.025em; font-weight: 600; margin: 0; }
+  .note { font-size: 12px; color: #858992; letter-spacing: .02em; padding-bottom: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 420px); gap: 28px; }
+  .option { min-width: 0; }
+  .meta { height: 66px; display: flex; align-items: flex-start; gap: 12px; }
+  .letter { width: 28px; height: 28px; border: 1px solid #41444b; color: #c4c7cd; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
+  h2 { margin: 0 0 5px; font-size: 15px; font-weight: 550; letter-spacing: .01em; }
+  .desc { margin: 0; color: #8b8f98; font-size: 12px; line-height: 1.4; }
+  .shot { display: block; width: 420px; height: 1680px; object-fit: cover; border-radius: 12px; box-shadow: 0 14px 45px rgba(0,0,0,.22); }
+  footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid #292b30; display: flex; justify-content: space-between; color: #777b84; font-size: 11px; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Workspace navigation · Visual study</div><h1>侧栏舒适性优化</h1></div>
+    <div class="note">相同内容与尺寸 · 仅比较视觉层级</div>
+  </header>
+  <section class="grid">
+    <article class="option">
+      <div class="meta"><span class="letter">A</span><div><h2>克制深灰</h2><p class="desc">层级均衡 · 柔和选中 · 日常耐看</p></div></div>
+      <img class="shot" src="screenshots/a-neutral-focus.png" alt="A 克制深灰侧栏设计">
+    </article>
+    <article class="option">
+      <div class="meta"><span class="letter">B</span><div><h2>暖墨低蓝光</h2><p class="desc">微暖底色 · 轻盈分组 · 夜间阅读</p></div></div>
+      <img class="shot" src="screenshots/b-warm-graphite.png" alt="B 暖墨低蓝光侧栏设计">
+    </article>
+    <article class="option">
+      <div class="meta"><span class="letter">C</span><div><h2>编辑器精密网格</h2><p class="desc">树状引导 · 紧凑对齐 · 高效扫读</p></div></div>
+      <img class="shot" src="screenshots/c-compact-precision.png" alt="C 编辑器精密网格侧栏设计">
+    </article>
+  </section>
+  <footer><span>静态视觉初稿 · 保留原有项目、会话与操作结构</span><span>420 × 1680 px / each</span></footer>
+</main>
+</body>
+</html>

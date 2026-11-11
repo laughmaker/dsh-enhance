@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=420, initial-scale=1.0">
+  <title>Workspaces · Warm Graphite</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1e1e1c;
+      --section: #232320;
+      --section-current: #252623;
+      --text: #d8d4cc;
+      --text-strong: #e2ded5;
+      --secondary: #aaa59b;
+      --muted: #8f8b83;
+      --line: #34342f;
+      --line-soft: #2d2d29;
+      --accent: #83afb2;
+      --accent-dim: #607f80;
+      --selected: #2b302d;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 420px;
+      height: 1680px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 20px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    .sidebar {
+      width: 420px;
+      height: 1680px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    svg {
+      display: block;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .topbar {
+      flex: 0 0 48px;
+      height: 48px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .traffic { display: flex; align-items: center; gap: 9px; }
+    .traffic span { width: 12px; height: 12px; border-radius: 50%; }
+    .traffic .close { background: #ed6a5f; border: 1px solid #e05b51; }
+    .traffic .minimize { background: #f2be4f; border: 1px solid #dfa93d; }
+    .traffic .zoom { background: #61c554; border: 1px solid #50ae45; }
+    .tool {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary);
+      border-radius: 7px;
+    }
+    .workspace-bar {
+      flex: 0 0 52px;
+      height: 52px;
+      padding: 0 12px 0 16px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .workspace-title {
+      margin-right: auto;
+      color: var(--text-strong);
+      font-size: 17px;
+      line-height: 24px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .workspace-actions { display: flex; align-items: center; gap: 5px; }
+    .project-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 16px 12px 0;
+      overflow: hidden;
+    }
+    .project { margin: 0 0 11px; }
+    .project:last-child { margin-bottom: 0; }
+    .project-head {
+      position: relative;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 10px;
+      color: var(--text-strong);
+      background: var(--section);
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .project-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      line-height: 22px;
+      font-weight: 560;
+      letter-spacing: 0.01px;
+    }
+    .disclosure { width: 12px; height: 12px; color: var(--muted); }
+    .folder { width: 16px; height: 16px; color: var(--secondary); }
+    .project-head .disclosure + .project-name { margin-left: 1px; }
+    .sessions { position: relative; padding: 5px 0 2px; }
+    .sessions::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 3px;
+      left: 20px;
+      width: 1px;
+      background: var(--line-soft);
+    }
+    .session {
+      position: relative;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 0 0 0 28px;
+      padding: 0 10px 0 12px;
+      color: var(--text);
+    }
+    .session-title {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      line-height: 20px;
+      font-weight: 400;
+      letter-spacing: 0.08px;
+    }
+    .time {
+      flex: 0 0 38px;
+      width: 38px;
+      color: var(--secondary);
+      font-size: 12px;
+      line-height: 18px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .more {
+      height: 32px;
+      margin-left: 40px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+      letter-spacing: 0.05px;
+    }
+    .collapsed .project-head {
+      height: 36px;
+      background: transparent;
+      border-color: transparent;
+    }
+    .collapsed .project-name { font-weight: 450; color: var(--text); }
+    .collapsed + .collapsed { margin-top: -3px; }
+    .current-project { margin-top: 2px; }
+    .current-project .project-head {
+      background: var(--section-current);
+      border-top-color: #3a3d37;
+      border-bottom-color: #353832;
+    }
+    .current-project .project-name { color: var(--text-strong); font-weight: 600; }
+    .current-project .folder { color: var(--accent); }
+    .current-project .disclosure { color: var(--accent-dim); }
+    .current-session {
+      margin-left: 22px;
+      padding-left: 40px;
+      color: var(--text-strong);
+      background: var(--selected);
+      border-radius: 8px;
+      box-shadow: inset 0 0 0 1px #38423d;
+    }
+    .current-session .session-title { font-weight: 500; }
+    .current-session .time { color: var(--accent); font-weight: 500; }
+    .running {
+      position: absolute;
+      left: 13px;
+      top: 13px;
+      width: 14px;
+      height: 14px;
+      border: 1.6px solid var(--accent);
+      border-right-color: #445653;
+      border-radius: 50%;
+    }
+    .running::after {
+      content: "";
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      left: 4px;
+      top: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .footer {
+      flex: 0 0 76px;
+      height: 76px;
+      margin: 0 12px;
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .account { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #48463f;
+    }
+    .account-name { color: var(--text-strong); font-size: 14px; line-height: 22px; font-weight: 500; }
+    .footer-tools { display: flex; align-items: center; gap: 7px; }
+    .footer .tool { color: var(--secondary); }
+  </style>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Workspaces 侧栏">
+    <div class="topbar">
+      <div class="traffic" aria-label="窗口控制">
+        <span class="close"></span><span class="minimize"></span><span class="zoom"></span>
+      </div>
+      <div class="tool" aria-label="分栏">
+        <svg width="18" height="18" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M14.5 4.5v15"/></svg>
+      </div>
+    </div>
+
+    <div class="workspace-bar">
+      <div class="workspace-title">Workspaces</div>
+      <div class="workspace-actions">
+        <div class="tool" aria-label="搜索">
+          <svg width="18" height="18" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg>
+        </div>
+        <div class="tool" aria-label="筛选">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="var(--bg)"/><circle cx="15" cy="17" r="2" fill="var(--bg)"/></svg>
+        </div>
+        <div class="tool" aria-label="新建">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M13 5H6.5A2.5 2.5 0 0 0 4 7.5v10A2.5 2.5 0 0 0 6.5 20h10a2.5 2.5 0 0 0 2.5-2.5V11"/><path d="M16 3v6M13 6h6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <nav class="project-list" aria-label="项目与会话">
+      <section class="project expanded">
+        <div class="project-head">
+          <svg class="disclosure" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></svg>
+          <div class="project-name">Pet</div>
+        </div>
+        <div class="sessions">
+          <div class="session"><span class="session-title">宠物磨甲器产品定义反推</span><span class="time">10h</span></div>
+          <div class="session"><span class="session-title">BLE 与 NFC 寻物标签及…</span><span class="time">3d</span></div>
+          <div class="session"><span class="session-title">防丢器源头工厂溯源</span><span class="time">3d</span></div>
+          <div class="session"><span class="session-title">墨水屏型号介绍</span><span class="time">4d</span></div>
+          <div class="session"><span class="session-title">Google 的 Find Hub 如…</span><span class="time">4d</span></div>
+          <div class="more">Show 15 more sessions</div>
+        </div>
+      </section>
+
+      <section class="project expanded">
+        <div class="project-head">
+          <svg class="disclosure" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></svg>
+          <svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg>
+          <div class="project-name">blj-project</div>
+        </div>
+        <div class="sessions">
+          <div class="session"><span class="session-title">界面改造与自动部署</span><span class="time">9min</span></div>
+          <div class="session"><span class="session-title">Review and Update Pro…</span><span class="time">7h</span></div>
+          <div class="session"><span class="session-title">读取并理解整个项目</span><span class="time">16d</span></div>
+        </div>
+      </section>
+
+      <section class="project collapsed">
+        <div class="project-head">
+          <svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg>
+          <div class="project-name">Baolijie</div>
+        </div>
+      </section>
+
+      <section class="project collapsed">
+        <div class="project-head">
+          <svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg>
+          <div class="project-name">baolijie-data-platform</div>
+        </div>
+      </section>
+
+      <section class="project expanded current-project">
+        <div class="project-head">
+          <svg class="disclosure" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></svg>
+          <svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg>
+          <div class="project-name">dsh-enhance</div>
+        </div>
+        <div class="sessions">
+          <div class="session current-session">
+            <span class="running" aria-hidden="true"></span>
+            <span class="session-title">功能使用方法询问</span><span class="time">now</span>
+          </div>
+          <div class="session"><span class="session-title">会话迁移与功能调整</span><span class="time">8min</span></div>
+        </div>
+      </section>
+
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">equity-course</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">pet-radar</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">codex-theme</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">Sales</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">Survey</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">Temp</div></div></section>
+      <section class="project collapsed"><div class="project-head"><svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5v10a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-7l-2-3h-4a2 2 0 0 0-2 2v1Z"/></svg><div class="project-name">Ungrouped</div></div></section>
+    </nav>
+
+    <footer class="footer">
+      <div class="account">
+        <img class="avatar" src="assets/avatar.png" alt="何振东">
+        <span class="account-name">何振东</span>
+      </div>
+      <div class="footer-tools">
+        <div class="tool" aria-label="插件与自动化">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M18 6l-2.1 2.1M8.1 15.9 6 18"/><circle cx="12" cy="12" r="3.5"/></svg>
+        </div>
+        <div class="tool" aria-label="历史">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M4.2 8.2A8.5 8.5 0 1 1 3.6 14M4 4v4.5h4.5"/><path d="M12 7.5V12l3.2 2"/></svg>
+        </div>
+        <div class="tool" aria-label="应用网格">
+          <svg width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="5.5" height="5.5" rx="1"/><rect x="14.5" y="4" width="5.5" height="5.5" rx="1"/><rect x="4" y="14.5" width="5.5" height="5.5" rx="1"/><rect x="14.5" y="14.5" width="5.5" height="5.5" rx="1"/></svg>
+        </div>
+      </div>
+    </footer>
+  </aside>
+</body>
+</html>
