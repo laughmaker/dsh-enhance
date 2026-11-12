@@ -1,6 +1,8 @@
 node_modules/
 *.log
 .DS_Store
+# playwright-cli session artefacts (timestamped console logs and page snapshots).
+.playwright-cli/
 # Build output, produced by `npm run build` and shipped in the npm tarball.
 lib/
 
