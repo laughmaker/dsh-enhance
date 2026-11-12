@@ -21,8 +21,15 @@
  * there, so the whole module stays inert outside the Electron shell.
  */
 
+import { currentSurface, type Surface } from './surface.ts'
+
 /** localStorage key holding the last close's frame. */
 export const STORAGE_KEY = 'dsh-enhance.window-geometry.v1'
+
+/** DS Bot keeps its own frame; the two apps never share one. */
+export function storageKeyFor(surface: Surface): string {
+  return surface === 'ds-bot' ? 'ds-bot-enhance.window-geometry.v1' : STORAGE_KEY
+}
 
 /** A window frame in screen coordinates. */
 export interface Frame {
@@ -261,7 +268,7 @@ export function installStartupGeometry(win: DesktopWindow, store?: GeometryStore
     const maximized = isFilled(frame, area)
     if (!maximized) normal = frame
     try {
-      storage.setItem(STORAGE_KEY, JSON.stringify({ normal, maximized } satisfies SavedGeometry))
+      storage.setItem(storageKeyFor(currentSurface()), JSON.stringify({ normal, maximized } satisfies SavedGeometry))
     } catch {
       /* geometry is a preference: a blocked quota must not break the window */
     }
@@ -278,7 +285,7 @@ export function installStartupGeometry(win: DesktopWindow, store?: GeometryStore
     if (win.document.visibilityState === 'hidden') save()
   }
 
-  restore(storage === null ? undefined : readSavedGeometry(storage.getItem(STORAGE_KEY)))
+  restore(storage === null ? undefined : readSavedGeometry(storage.getItem(storageKeyFor(currentSurface()))))
 
   // `resize` is the only geometry event the renderer receives on macOS — a pure
   // `move` fires nothing — so the saved position is the one the window had at

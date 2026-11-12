@@ -31,7 +31,9 @@
  * clears those marks (the reader is looking at that conversation again).
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { BADGE_ROUTE } from '../badge-route.ts'
+import { badgeRouteFor } from '../badge-route.ts'
+import { badgePolicyFor } from './badge-policy.ts'
+import { currentSurface } from './surface.ts'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 
@@ -105,7 +107,7 @@ function postBadgeCount(count: number): void {
   if (typeof base !== 'string' || base === '') return
   let url: string
   try {
-    url = new URL(BADGE_ROUTE, base).href
+    url = new URL(badgeRouteFor(currentSurface()), base).href
   } catch {
     return
   }
@@ -192,7 +194,7 @@ export function installTurnBadge(ctx: Context, deps: TurnBadgeDeps = {}): () => 
   // Retire the v1 accumulating count so a stale number cannot haunt the
   // projection-based badge after an update.
   try {
-    localStorage.removeItem(LEGACY_STORAGE_KEY)
+    localStorage.removeItem(currentSurface() === 'ds-bot' ? 'ds-bot-enhance.badge.legacy.v1' : LEGACY_STORAGE_KEY)
   } catch {
     /* nothing to retire when storage is blocked */
   }
@@ -227,7 +229,9 @@ export function installTurnBadge(ctx: Context, deps: TurnBadgeDeps = {}): () => 
       Record<string, BadgeSessionRow & { running?: boolean }>
     >
     observeRunning(byId)
-    const count = unreadVisibleIds(byId, statusStore.getSnapshot(), attention).length
+    const policy = badgePolicyFor(currentSurface())
+    const statusView = { get: (id: string) => statusStore.getSnapshot().get(id) }
+    const count = policy.select(byId, statusView, attention).length
     if (painted === count) return
     painted = count
     // The Host owns the native tile; a browser with the Badging API paints its

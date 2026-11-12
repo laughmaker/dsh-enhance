@@ -4,15 +4,12 @@
  * The plugin is almost entirely browser-side, but one thing cannot be: the
  * macOS Dock badge. The page's Badging API (`navigator.setAppBadge`) is not
  * implemented by Electron's renderer, so the call that used to paint the tile
- * was a silent no-op — the sidebar showed its unread dots while the icon showed
- * nothing. The native surface lives in the main process (`app.dock.setBadge`),
- * so this half exposes one tiny route the browser half reports the count to.
- *
- * Nothing else runs here: the row exists so the Host serves the browser bundle
- * and so the two halves share one lifecycle.
+ * was a silent no-op. The native surface lives in the main process
+ * (`app.dock.setBadge`), so this half exposes the routes the page reports the
+ * count to. One route per surface; the page only POSTs the one it belongs to.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { BADGE_ROUTE } from './badge-route.ts'
+import { BADGE_ROUTE, badgeRouteFor } from './badge-route.ts'
 
 /** Request face the route reads (structural subset of `IncomingMessage`). */
 interface BadgeRequest {
@@ -102,7 +99,7 @@ async function paintDockBadge(count: number): Promise<boolean> {
 }
 
 /**
- * Mount the badge route on the Host's web server.
+ * Mount one badge route per surface on the Host's web server.
  * @param ctx - host context carrying `webServer` and `connection`.
  */
 export function apply(ctx: Context): void {
@@ -110,46 +107,50 @@ export function apply(ctx: Context): void {
     inject?: (deps: string[], callback: (ctx: Context) => void) => void
   }
 
-  /** Register the route once the services it needs are present. */
+  /** Register the routes once the services they need are present. */
   const install = (host: Context): void => {
     const webServer = (host as unknown as { webServer?: BadgeWebServer }).webServer
     const connection = (host as unknown as { connection?: BadgeConnection }).connection
     if (webServer === undefined || connection === undefined) return
-    /** One route: read the reported count and paint the native tile. */
-    const register = (): (() => void) => webServer.register({
-      kind: 'exact',
-      path: BADGE_ROUTE,
-      async handler(req, res): Promise<void> {
-        // Connection owns trust and authentication; never infer it here.
-        const rejection = connection.requestRejection(req)
-        if (rejection !== undefined) {
-          res.writeHead(rejection)
-          res.end()
-          return
-        }
-        if (req.method !== 'POST') {
-          res.writeHead(405, { 'content-type': 'application/json' })
-          res.end('{"ok":false}')
-          return
-        }
-        const count = await readCount(req)
-        if (count === undefined) {
-          res.writeHead(400, { 'content-type': 'application/json' })
-          res.end('{"ok":false}')
-          return
-        }
-        const painted = await paintDockBadge(count)
-        res.writeHead(200, { 'content-type': 'application/json' })
-        res.end(JSON.stringify({ ok: true, painted }))
-      },
-    })
-    // Own the route for exactly the plugin's lifetime: an unloaded row must not
+
+    /** Read the reported count and paint the native tile. */
+    const handler = async (req: BadgeRequest, res: BadgeResponse): Promise<void> => {
+      const rejection = connection.requestRejection(req)
+      if (rejection !== undefined) {
+        res.writeHead(rejection)
+        res.end()
+        return
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'content-type': 'application/json' })
+        res.end('{"ok":false}')
+        return
+      }
+      const count = await readCount(req)
+      if (count === undefined) {
+        res.writeHead(400, { 'content-type': 'application/json' })
+        res.end('{"ok":false}')
+        return
+      }
+      const painted = await paintDockBadge(count)
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: true, painted }))
+    }
+
+    /** One exact route per surface; the page picks its own. */
+    const register = (): (() => void) => {
+      const paths = [BADGE_ROUTE, badgeRouteFor('ds-bot')]
+      const stops = paths.map(path => webServer.register({ kind: 'exact', path, handler }))
+      return () => { for (const stop of stops) stop() }
+    }
+
+    // Own the routes for exactly the plugin's lifetime: an unloaded row must not
     // keep a handler that paints a badge for a plugin that is gone.
     const effect = (host as unknown as {
       effect?: (body: () => () => void, label: string) => void
     }).effect
     if (typeof effect === 'function') {
-      effect(register, 'dsh-enhance: dock badge route')
+      effect(register, 'dsh-enhance: dock badge routes')
       return
     }
     register()

@@ -8,11 +8,14 @@ import { css as sidebarDensity } from './styles/sidebar-density.ts'
 import { css as sidebarLayout } from './styles/sidebar-layout.ts'
 import { css as toolbar } from './styles/toolbar.ts'
 import { css as fileMenu } from './styles/file-menu.ts'
+import { css as dsBotPlaceholder } from './surfaces/ds-bot/placeholder.ts'
+import { css as dsBotMarkdownAnchors } from './surfaces/ds-bot/markdown-anchors.ts'
+import { currentSurface, stylePluginId, type Surface } from './surface.ts'
 
 /** Stable plugin identity stamped onto every injected style tag. */
 export const PLUGIN_ID = 'dsh-enhance'
 
-/** Sheet name to CSS, in cascade order: later sheets win ties against earlier ones. */
+/** DSH sheet name to CSS, in cascade order: later sheets win ties against earlier ones. */
 export const SHEETS: readonly (readonly [string, string])[] = [
   ['document-preview.css', documentPreview],
   ['chat-markdown.css', chatMarkdown],
@@ -24,8 +27,32 @@ export const SHEETS: readonly (readonly [string, string])[] = [
   ['file-menu.css', fileMenu],
 ]
 
+/** Rules both apps share verbatim: markdown, annotation chrome, context menus. */
+const SHARED_SHEETS: readonly (readonly [string, string])[] = [
+  ['document-preview.css', documentPreview],
+  ['chat-markdown.css', chatMarkdown],
+  ['toolbar.css', toolbar],
+  ['file-menu.css', fileMenu],
+]
+
+/** DS Bot mounts the shared rules plus its own anchors; no DSH chrome. */
+export const DS_BOT_SHEETS: readonly (readonly [string, string])[] = [
+  ...SHARED_SHEETS,
+  ['ds-bot-placeholder.css', dsBotPlaceholder],
+  ['ds-bot-markdown-anchors.css', dsBotMarkdownAnchors],
+]
+
 /**
- * Mount every global sheet for exactly the owning plugin lifetime.
+ * The sheet set for one surface. The two sets never mount together.
+ * @param surface - the decided surface.
+ * @returns that surface's sheets.
+ */
+export function sheetsFor(surface: Surface): readonly (readonly [string, string])[] {
+  return surface === 'ds-bot' ? DS_BOT_SHEETS : SHEETS
+}
+
+/**
+ * Mount one surface's sheets for exactly the owning plugin lifetime.
  *
  * The tags carry `data-plugin`, so the client module system's entry lifecycle
  * evicts them when this plugin unloads even if the fiber is torn down abruptly.
@@ -33,14 +60,16 @@ export const SHEETS: readonly (readonly [string, string])[] = [
  */
 export function installStyles(ctx: Context): void {
   if (typeof document === 'undefined') return
-  for (const [name, css] of SHEETS) {
+  const surface = currentSurface()
+  const pluginId = stylePluginId(surface)
+  for (const [name, css] of sheetsFor(surface)) {
     ctx.effect(() => {
       const tag = document.createElement('style')
-      tag.dataset.plugin = PLUGIN_ID
-      tag.dataset.pluginCss = `${PLUGIN_ID}/${name}`
+      tag.dataset.plugin = pluginId
+      tag.dataset.pluginCss = `${pluginId}/${name}`
       tag.textContent = css
       document.head.appendChild(tag)
       return () => { tag.remove() }
-    }, `dsh-enhance: ${name} stylesheet`)
+    }, `${pluginId}: ${name} stylesheet`)
   }
 }

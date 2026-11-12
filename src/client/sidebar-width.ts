@@ -14,8 +14,15 @@
  * a reset cannot overwrite the remembered value.
  */
 
+import { currentSurface, type Surface } from './surface.ts'
+
 /** localStorage key holding the last width this plugin settled on. */
 export const STORAGE_KEY = 'dsh-enhance.sidebar-width.v1'
+
+/** DS Bot keeps its own width preference; the two apps never share one. */
+export function storageKeyFor(surface: Surface): string {
+  return surface === 'ds-bot' ? 'ds-bot-enhance.sidebar-width.v1' : STORAGE_KEY
+}
 
 /** Narrowest width the sidebar may open at; matches the drag floor. */
 export const DEFAULT_WIDTH = 214
@@ -52,7 +59,7 @@ export function readSidebarWidth(raw: string | null): number | undefined {
 export function startupSidebarWidth(store: WidthStore | null): number {
   if (store === null) return DEFAULT_WIDTH
   try {
-    return readSidebarWidth(store.getItem(STORAGE_KEY)) ?? DEFAULT_WIDTH
+    return readSidebarWidth(store.getItem(storageKeyFor(currentSurface()))) ?? DEFAULT_WIDTH
   } catch {
     return DEFAULT_WIDTH
   }
@@ -67,7 +74,7 @@ export function rememberSidebarWidth(store: WidthStore | null, width: number): v
   if (store === null) return
   const bounded = Math.round(Math.min(Math.max(width, MIN_WIDTH), MAX_WIDTH))
   try {
-    store.setItem(STORAGE_KEY, String(bounded))
+    store.setItem(storageKeyFor(currentSurface()), String(bounded))
   } catch {
     /* a preference that cannot be written must not break the gesture */
   }

@@ -164,3 +164,22 @@ npm publish              # 发布到 npm
 - 浏览器侧必须是 `window.__ModuleLoader__.load({ id, factory })` 形式，由 `tsdown.config.mjs` 的 banner 包装。
 - 值导入仅限基线模块表（`react`、`react-dom`、`zod`、`@deepseek-ai/cordis` 等），其余服务必须通过 `ctx` 获取。
 - 样式表是单个 `String.raw` 模板字面量，文件内**只能有首尾两个反引号**，注释里也不能出现反引号。
+
+---
+
+## 2026-11-12 · surface 分叉
+
+同一个插件同时服务 DSH 与 DS Bot，运行时只挂一套对应分支。
+
+- 新增 `src/client/surface.ts`：一次判定 surface。DS Bot 的 `window.__DSH_BOOT__` 是 `entries` 数组（行内 `id: "ds-bot"`），不是 `bundles` / `services`；检测器递归收集 boot 图里的名字，`.bt-leftcol` 只作回退（DS Bot 的栏在插件挂载之后才出现，不能当主信号）。给出 `featuresFor` 开关与 `stylePluginId`。
+- 2026-11-12 二次修正：QA 首轮实测把 DS Bot 判成 `dsh`（仍挂 8 张 DSH 表、角标仍 POST `/dsh-enhance/badge`），根因是 boot 字段读错；已改读 `entries`、补对应测试。
+- 2026-11-12 三次修正：QA 第二轮 surface 判对，但 13px / 段距仍不生效。根因是 DS Bot 宿主 `.bt-bubble [class*="_markdown"] { font-size: inherit !important }`（优先级 (0,2,0)）压过共用表的 (0,1,0) 规则，`.bt-bubble p { margin: 0 }` 同理。`ds-bot-markdown-anchors.css` 改为以 `[data-slot="conversation.chat.node"] .bt-bubble [class*="_markdown"]` 为锚覆盖，不再猜 DOM 层数。
+- 样式：DSH 仍是原来 8 张表；DS Bot 挂 4 张共用表（md、文件预览、批注工具栏、右键菜单）加 `ds-bot-placeholder.css`、`ds-bot-markdown-anchors.css`，`data-plugin` 为 `ds-bot-enhance`。annotation 与 md 规则两边共用。
+- 选择器：`src/client/selectors.ts` 每 app 一张锚点表；未确定的 split / GenUI 类名不猜。
+- 持久化：侧栏宽度、窗口几何、legacy 角标键按 surface 取不同键，互不读写。
+- 角标：`badgeRouteFor` 分开路由（`/dsh-enhance/badge`、`/ds-bot-enhance/badge`），Host 两条都注册，页面只 POST 自己那条；计数走 `badgePolicyFor`。
+- 影响文件：`src/badge-route.ts`、`src/index.ts`、`src/client/{index.tsx,styles.ts,sidebar-width.ts,window-geometry.ts,turn-badge.ts,surface.ts,selectors.ts,badge-policy.ts,surfaces/ds-bot/*}`、`tests/surface.test.ts`、`README.md`。
+
+待验证：DS Bot 的 dsh-web 实际渲染（截图 + 关键样式实测）；深色主题、运行中会话、空会话 hero、发送钮可用态、Dock 未读。
+
+待定：DS Bot 角标计数口径（排除哪些会话、是否按 Bot 分组），`badgePolicyFor('ds-bot').pending` 为 true；DS Bot 新视觉风格本轮未画。

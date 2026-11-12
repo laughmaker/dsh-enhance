@@ -28,6 +28,7 @@ import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
 import { installTurnBadge } from './turn-badge.ts'
 import { installFileMenu } from './file-menu.ts'
 import { LOCALE_NS, en, zh } from './locales.ts'
+import { currentSurface, featuresFor } from './surface.ts'
 
 /** The one side conversation this page opens; later requests add to it. */
 let openSideChat: SessionId | undefined
@@ -57,41 +58,44 @@ export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces',
  */
 export function apply(ctx: Context): void {
   const t: TranslateNS<typeof LOCALE_NS> = ctx.locale.bind(LOCALE_NS)
+  const features = featuresFor(currentSurface())
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
   // The whale on the empty page swims through a trail of small bubbles. The
   // bubbles are drawn by the stylesheet; this only lets them go at the fish.
-  ctx.effect(() => installWhaleBubbles(document), 'dsh-enhance: whale bubbles')
-  ctx.effect(() => installFileMenu(ctx, t), 'dsh-enhance: file context menu')
+  if (features.whale) ctx.effect(() => installWhaleBubbles(document), 'dsh-enhance: whale bubbles')
+  if (features.fileMenu) ctx.effect(() => installFileMenu(ctx, t), 'dsh-enhance: file context menu')
   // The sidebar's minimum width is a module constant in the layout package, so the
   // drag gesture is taken over to allow 50px below it. The same module opens the
   // column at its narrowest on a first run, then at whatever width the reader left
   // it at: the layout store itself starts at 280px on every load.
-  const widthStore = pageStorage()
-  ctx.effect(() => installSidebarFloor(document, {
-    initialWidth: startupSidebarWidth(widthStore),
-    onCommit: (width) => { rememberSidebarWidth(widthStore, width) },
-  }), 'dsh-enhance: sidebar floor')
+  if (features.sidebarFloor) {
+    const widthStore = pageStorage()
+    ctx.effect(() => installSidebarFloor(document, {
+      initialWidth: startupSidebarWidth(widthStore),
+      onCommit: (width) => { rememberSidebarWidth(widthStore, width) },
+    }), 'dsh-enhance: sidebar floor')
+  }
   // Plugins that register a sidebar footer action land at the bottom, beside the
   // account row. The footer's container is moved into the panel row so every
   // plugin icon shares the top list (wrapping with the sidebar's width)
   // regardless of the slot it was registered in.
-  ctx.effect(() => installSidebarTopRow(document), 'dsh-enhance: sidebar top row')
+  if (features.sidebarTopRow) ctx.effect(() => installSidebarTopRow(document), 'dsh-enhance: sidebar top row')
   // The "Workspaces" heading names the tree under it and nothing more. The row
   // that replaces it counts sessions and workspaces, and switches to running
   // and unread counts while either of those is above zero.
-  ctx.effect(() => installSectionStats(ctx, document), 'dsh-enhance: section stats')
+  if (features.sectionStats) ctx.effect(() => installSectionStats(ctx, document), 'dsh-enhance: section stats')
   // The Electron shell opens at a fixed 1280x820 and remembers nothing; the page it
   // shows is allowed to size the window, so the first launch fills the work area and
   // later launches reopen at the frame the last one closed with. A browser tab has
   // no work area to fill, so the check keeps the module off that path entirely.
-  if (isDesktopShell()) {
+  if (features.windowGeometry && isDesktopShell()) {
     ctx.effect(() => installStartupGeometry(window), 'dsh-enhance: window geometry')
   }
   // Finished-while-away conversations mark the Dock tile through the standard
   // Badging API; the module no-ops where the webview does not implement it.
-  ctx.effect(() => installTurnBadge(ctx), 'dsh-enhance: turn badge')
-  registerSideChat(ctx, t)
+  if (features.badge) ctx.effect(() => installTurnBadge(ctx), 'dsh-enhance: turn badge')
+  if (features.sideChat) registerSideChat(ctx, t)
 
   /**
    * Open a side conversation beside the current one and hand it the passage as
@@ -151,7 +155,7 @@ export function apply(ctx: Context): void {
   // The seat lives on the composer's overlay anchor: it renders the annotation
   // pill inside the card's own frame and portals the annotation popover next to
   // the live selection.
-  ctx.effect(() => ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+  if (features.annotations) ctx.effect(() => ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay',
     id: 'dsh-enhance-annotations',
     order: 10,
