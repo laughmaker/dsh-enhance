@@ -124,6 +124,7 @@ export interface SurfaceFeatures {
   markdown: boolean
   documentPreview: boolean
   badge: boolean
+  panelWidths: boolean
 }
 
 /**
@@ -145,6 +146,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
     markdown: true,
     documentPreview: true,
     badge: true,
+    panelWidths: true,
   }
   if (surface === 'ds-bot') {
     return {
@@ -163,6 +165,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
     sectionStats: true,
     whale: true,
     windowGeometry: true,
+    panelWidths: false,
   }
 }
 

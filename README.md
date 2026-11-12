@@ -174,7 +174,7 @@ npm publish              # 发布到 npm
 - 新增 `src/client/surface.ts`：一次判定 surface。DS Bot 的 `window.__DSH_BOOT__` 是 `entries` 数组（行内 `id: "ds-bot"`），不是 `bundles` / `services`；检测器递归收集 boot 图里的名字，`.bt-leftcol` 只作回退（DS Bot 的栏在插件挂载之后才出现，不能当主信号）。给出 `featuresFor` 开关与 `stylePluginId`。
 - 2026-11-12 二次修正：QA 首轮实测把 DS Bot 判成 `dsh`（仍挂 8 张 DSH 表、角标仍 POST `/dsh-enhance/badge`），根因是 boot 字段读错；已改读 `entries`、补对应测试。
 - 2026-11-12 三次修正：QA 第二轮 surface 判对，但 13px / 段距仍不生效。根因是 DS Bot 宿主 `.bt-bubble [class*="_markdown"] { font-size: inherit !important }`（优先级 (0,2,0)）压过共用表的 (0,1,0) 规则，`.bt-bubble p { margin: 0 }` 同理。`ds-bot-markdown-anchors.css` 改为以 `[data-slot="conversation.chat.node"] .bt-bubble [class*="_markdown"]` 为锚覆盖，不再猜 DOM 层数。
-- 样式：DSH 仍是原来 8 张表；DS Bot 挂 4 张共用表（md、文件预览、批注工具栏、右键菜单）加 `ds-bot-placeholder.css`、`ds-bot-markdown-anchors.css`，`data-plugin` 为 `ds-bot-enhance`。annotation 与 md 规则两边共用。
+- 样式：DSH 仍是原来 8 张表；DS Bot 挂 4 张共用表（md、文件预览、批注工具栏、右键菜单）加 `ds-bot-chrome.css`、`ds-bot-markdown-anchors.css`，`data-plugin` 为 `ds-bot-enhance`。annotation 与 md 规则两边共用。
 - 选择器：`src/client/selectors.ts` 每 app 一张锚点表；未确定的 split / GenUI 类名不猜。
 - 持久化：侧栏宽度、窗口几何、legacy 角标键按 surface 取不同键，互不读写。
 - 角标：`badgeRouteFor` 分开路由（`/dsh-enhance/badge`、`/ds-bot-enhance/badge`），Host 两条都注册，页面只 POST 自己那条；计数走 `badgePolicyFor`。
@@ -182,4 +182,19 @@ npm publish              # 发布到 npm
 
 待验证：DS Bot 的 dsh-web 实际渲染（截图 + 关键样式实测）；深色主题、运行中会话、空会话 hero、发送钮可用态、Dock 未读。
 
-待定：DS Bot 角标计数口径（排除哪些会话、是否按 Bot 分组），`badgePolicyFor('ds-bot').pending` 为 true；DS Bot 新视觉风格本轮未画。
+待定：DS Bot 角标计数口径（排除哪些会话、是否按 Bot 分组），`badgePolicyFor('ds-bot').pending` 为 true。
+
+- 2026-11-12 四次：按截图批注落地 `ds-bot-chrome.css`（替换占位表）：右上角操作行移到距窗口顶/右 20px；会话标题胶囊距顶 20px；侧栏最小宽度 220px（方案 A 视觉近似，不抢宿主 `frame-layout.js` 的 inline width，拖动时接受回到 264）；侧栏右上角圆角去掉；隐藏左上角 `DS BOT` 品牌字。红绿灯边的折叠/展开钮按用户要求不改。
+- 2026-11-12 五次尝试（已被后续修正替代）：曾把 header 改成 fixed，并用 `right:var(--bt-panel-w,320px)` 调整水平位置。该变量只在 panel 本身定义，header 读不到；fixed 还让宿主渐变跨过侧栏。不能将该版记录为视觉验收通过。
+- 2026-11-12 六次修正：核实桌面 preload 设置 `data-windows-titlebar`、标题栏高度 40px、`--dsh-frame-chrome-top:0px`，网页实际覆盖窗口顶。残留内圆角来自宿主 `_centerCol` 的 16px 左上圆角；其顶部 40px padding 来自桌面 material.css。DS Bot chrome 将这两项归零，header 保持 absolute、top:20px，沿用宿主会话列水平布局；去掉 header::before 渐变，避免顶部横向光影。右上操作行按 panel 绝对定位 top/right:20px，内容预留至 y=56 并扣除已有 caption band。影响文件：chrome.ts、surface.test.ts、本说明。无标签条的 Group settings 视图额外将 panel 顶部 padding 设为 10px，加上 subhead 自带 10px 后，按钮距顶 20px。等效桌面 DOM 已加载实际 material.css/macos.css 与 40px band，并刷新加载 18:17 构建产物实测：胶囊 y=20 且居中于会话列；操作排顶/右各 20px，正文重叠 0px；内圆角 0px、header 渐变 none；设置页返回/关闭按钮 y=20。19 项 surface 测试通过、构建通过。补充将操作排及设置页按钮设为 `-webkit-app-region:no-drag`，确保标题栏内控件不参与拖窗（胶囊已有宿主规则）。material.css 已把 frame 的 padding-top 归零，因此不应将 frame 和 centerCol 推断为 40+40=80px。原生 Electron 窗口边框、vibrancy 和拖窗命中测试尚未直接验收。侧栏仍由宿主 inline width 控制，实测 280px，220px 目标未达成。
+- 2026-11-12 八次调整（用户确认）：三个侧栏操作按钮改为与普通工具按钮一致的观感（透明背景、次级图标色、hover 用 `--bt-hover` 与主前景）。新增 `surfaces/ds-bot/panel-widths.ts`（仅 DS Bot，`panelWidths` 特性开关），在捕获阶段接管展开态拖拽：左侧可窄至 220px、右侧详情可窄至 260px（上限仍 420/520，且保底聊天区 420px），浏览器面板沿用宿主 360px 下限；拖到 176px 以内归宿主折成图标栏。宽度写入侧栏与聊天列 margin、`.bt-pane` 边界并持久化（独立键），刷新后恢复。已构建并刷新实测：左侧 220、右侧 260，聊天区边界同步，重载后仍生效；21 项 surface 测试通过。原生 Electron 拖拽手感与材质仍未直接验证。
+- 2026-11-12 七次调整（用户确认）：DS Bot 用户气泡改用主题主背景与文字色混合（浅色 7%、深色 12%），默认主题约为浅灰 #ECECEC / 深灰 #2F2F2F，文字沿用主题前景，降低原黑白反转气泡的突兀感。侧栏 padding-top 设为 20px、操作排自身顶部 padding 归零，按钮与下方列表同步上移。影响文件：chrome.ts、本说明。已构建并刷新加载产物，在带实际桌面样式的浏览器 DOM 里切换深浅主题实测：两侧按钮 y=20、中心线 y=38；左侧列表 y=90→58，上移 32px；宿主折叠按钮两处坐标不变。已截图检查；原生 Electron 材质和拖窗点击仍未直接验证。
+
+### 2026-11-12 · 图标栏宽度修复与隐藏折叠按钮
+
+- 用户更新决定：隐藏侧栏折叠/展开按钮，保留宿主快捷键与边界拖动；此决定替代上文「折叠按钮不改」。
+- 根因：DS Bot 的图标栏按 88px 给正文让位，但原先无条件的 `.bt-leftcol { min-width:220px !important }` 把侧栏实际撑到 220px，头像和拖动边界覆盖正文。最小宽度现仅用于 `open` / `drawer`，`rail` 的最小宽度归零，宽度继续由宿主 inline 状态驱动；未接管宿主拖动或快捷键。
+- 隐藏 `.bt-title-toggle`、`.bt-side-collapse` 以及宿主的 `button[data-sidebar-toggle]` / `button[data-sidebar-opener]`，避免完全隐藏侧栏后另一个备用按钮露出。图标栏顶部保留 caption clearance + 8px，防止移除按钮后首头像占用原生窗口控制区。
+- 影响文件：`src/client/surfaces/ds-bot/chrome.ts`、`tests/surface.test.ts`、本说明；重建 `lib/client.js`。其他 surface 的样式分支不改。
+- 验证：19 项 surface 测试、tsdown 构建、`git diff --check` 通过。在现有 `http://127.0.0.1:63639/` 服务的独立认证浏览器内，用真实鼠标拖到最左、拖回 320px，并用该浏览器默认快捷键 Meta+Alt+B 完成隐藏/恢复。额外加载应用实际 material.css、macos.css 与 40px 标题栏参数，深浅主题实测：rail 宽度、正文左边界、拖动中心线均为 88px，首头像 y=48；完全隐藏后正文左边界为 0，恢复后仍为 320px；三种状态可见侧栏开关均为 0，横向溢出为 false。已读取深色 rail / hidden 与浅色 rail 截图检查。
+- 截图：`~/tmp/dsbot-sidebar-inspect/rail-desktop-dark-verified.png`、`hidden-desktop-dark-verified.png`、`rail-desktop-light-verified.png`。原生 Electron 的材质、红绿灯实际绘制与拖窗命中未直接操作验证；当前桌面窗口需刷新加载新构建（无 dev:web watcher）。

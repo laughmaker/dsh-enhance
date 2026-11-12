@@ -8,7 +8,7 @@ import { css as sidebarDensity } from './styles/sidebar-density.ts'
 import { css as sidebarLayout } from './styles/sidebar-layout.ts'
 import { css as toolbar } from './styles/toolbar.ts'
 import { css as fileMenu } from './styles/file-menu.ts'
-import { css as dsBotPlaceholder } from './surfaces/ds-bot/placeholder.ts'
+import { css as dsBotChrome } from './surfaces/ds-bot/chrome.ts'
 import { css as dsBotMarkdownAnchors } from './surfaces/ds-bot/markdown-anchors.ts'
 import { currentSurface, stylePluginId, type Surface } from './surface.ts'
 
@@ -35,10 +35,10 @@ const SHARED_SHEETS: readonly (readonly [string, string])[] = [
   ['file-menu.css', fileMenu],
 ]
 
-/** DS Bot mounts the shared rules plus its own anchors; no DSH chrome. */
+/** DS Bot mounts the shared rules plus its own chrome and md anchors; no DSH chrome. */
 export const DS_BOT_SHEETS: readonly (readonly [string, string])[] = [
   ...SHARED_SHEETS,
-  ['ds-bot-placeholder.css', dsBotPlaceholder],
+  ['ds-bot-chrome.css', dsBotChrome],
   ['ds-bot-markdown-anchors.css', dsBotMarkdownAnchors],
 ]
 

@@ -15,6 +15,8 @@ import { storageKeyFor as geometryKeyFor } from '../src/client/window-geometry.t
 import { badgePolicyFor, completionUnreadIds } from '../src/client/badge-policy.ts'
 import { DSH_SELECTORS, DS_BOT_SELECTORS, selectorsFor } from '../src/client/selectors.ts'
 import { css as dsBotMarkdownAnchors } from '../src/client/surfaces/ds-bot/markdown-anchors.ts'
+import { css as dsBotChrome } from '../src/client/surfaces/ds-bot/chrome.ts'
+import { DETAILS_MIN, LEFT_MIN } from '../src/client/surfaces/ds-bot/panel-widths.ts'
 
 beforeEach(() => resetSurfaceForTests())
 
@@ -91,7 +93,7 @@ describe('style sets', () => {
     }
     expect(names).toContain('chat-markdown.css')
     expect(names).toContain('toolbar.css')
-    expect(names).toContain('ds-bot-placeholder.css')
+    expect(names).toContain('ds-bot-chrome.css')
     expect(names).toContain('ds-bot-markdown-anchors.css')
   })
 
@@ -99,6 +101,39 @@ describe('style sets', () => {
     expect(dsBotMarkdownAnchors).toContain('[data-slot="conversation.chat.node"] .bt-bubble [class*="_markdown"]')
     expect(dsBotMarkdownAnchors).toContain('font-size: 13px !important')
     expect(dsBotMarkdownAnchors).toContain('margin: 0 0 1em !important')
+  })
+
+  it('ships the DS Bot chrome rules with the requested hidden sidebar toggles', () => {
+    expect(dsBotChrome).toContain('.bt-drawer-top')
+    expect(dsBotChrome).toContain('position: absolute !important')
+    expect(dsBotChrome).toContain('top: 20px !important')
+    expect(dsBotChrome).toContain('right: 20px !important')
+    expect(dsBotChrome).toContain('.bt-side-top .bt-brand')
+    expect(dsBotChrome).toContain('min-width: 220px !important')
+    expect(dsBotChrome).toContain('border-top-right-radius: 0 !important')
+    expect(dsBotChrome).toContain('.bt-title-toggle,\n.bt-side-collapse,')
+  })
+
+  it('styles the sidebar actions like the other tool buttons', () => {
+    expect(dsBotChrome).toContain('.bt-side-top .bt-round')
+    expect(dsBotChrome).toContain('background: transparent !important')
+    expect(dsBotChrome).toContain('.bt-side-top .bt-round:hover')
+    expect(dsBotChrome).toContain('var(--bt-hover) !important')
+  })
+
+  it('relaxes the DS Bot column ranges on that surface only', () => {
+    expect(LEFT_MIN).toBe(220)
+    expect(DETAILS_MIN).toBe(260)
+    expect(featuresFor('ds-bot').panelWidths).toBe(true)
+    expect(featuresFor('dsh').panelWidths).toBe(false)
+  })
+
+  it('keeps host horizontal layout and removes the desktop inner corner and fade', () => {
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] div[class*="_centerCol"]')
+    expect(dsBotChrome).toContain('border-top-left-radius: 0 !important')
+    expect(dsBotChrome).toContain('content: none !important')
+    expect(dsBotChrome).not.toContain('body:has(.bt-panel)')
+    expect(dsBotChrome).not.toContain('var(--bt-panel-w, 320px)')
   })
 })
 

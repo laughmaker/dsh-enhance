@@ -22,6 +22,7 @@ import { installStyles } from './styles.ts'
 import { installWhaleBubbles } from './whale-bubbles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
+import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
 import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
@@ -81,6 +82,10 @@ export function apply(ctx: Context): void {
   // plugin icon shares the top list (wrapping with the sidebar's width)
   // regardless of the slot it was registered in.
   if (features.sidebarTopRow) ctx.effect(() => installSidebarTopRow(document), 'dsh-enhance: sidebar top row')
+  // DS Bot's two columns clamp their widths in a private layout constant. This
+  // owns the expanded drag gesture on that surface so the sidebar can narrow to
+  // 220px and the details panel to 260px; the browser panel keeps its own range.
+  if (features.panelWidths) ctx.effect(() => installPanelWidths(document), 'dsh-enhance: panel widths')
   // The "Workspaces" heading names the tree under it and nothing more. The row
   // that replaces it counts sessions and workspaces, and switches to running
   // and unread counts while either of those is above zero.
