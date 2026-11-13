@@ -198,6 +198,20 @@ export function retainOnly(keep: SessionId | string | undefined): void {
 const INDENT = '   '
 
 /**
+ * Put a block of text under the annotation's labels, one indented line per
+ * line of the original.
+ *
+ * A passage can cover several lines of the transcript, and a comment can be
+ * written with Shift+Enter. Folding both onto one line lost that shape, so the
+ * line breaks are kept and every line sits at the same column.
+ * @param text - the text to indent.
+ * @returns the indented lines.
+ */
+function indentedLines(text: string): string[] {
+  return text.split('\n').map(line => (line.length === 0 ? '' : `${INDENT}${line}`))
+}
+
+/**
  * Render one annotation as two labelled blocks: the passage, then the comment.
  *
  * One line with a dash between the two read badly as soon as the passage was
@@ -207,21 +221,24 @@ const INDENT = '   '
  * already says what the text under it is. Without a comment only the passage
  * block is sent — an empty label would ask the model to answer nothing.
  *
+ * The comment label follows the passage on the very next line: a blank line
+ * between them read as if the comment belonged to nothing above it.
+ *
  * The number goes on in `annotationsPrompt`, which keeps this text contiguous:
  * the composer looks for it in the draft before carrying an annotation again.
  * @param annotation - the annotation to render.
  * @returns message text for one annotation, its continuation lines indented.
  */
 export function annotationBlock(annotation: Annotation): string {
-  const passage = annotation.passage.replace(/\s+/g, ' ').trim()
+  const passage = annotation.passage.replace(/\r\n|\r/g, '\n').trim()
   const quoted = passage.length > 140 ? `${passage.slice(0, 139)}…` : passage
-  const lines = ['Selected text:', `${INDENT}${quoted}`]
+  const lines = ['Selected text:', ...indentedLines(quoted)]
   const note = annotation.note.replace(/\r\n|\r/g, '\n').trim()
   if (note.length > 0) {
-    lines.push('', `${INDENT}User comment:`)
+    lines.push(`${INDENT}User comment:`)
     // A comment written with Shift+Enter keeps its line breaks; each line still
     // has to sit at the same column as the first one.
-    for (const line of note.split('\n')) lines.push(`${INDENT}${line}`)
+    lines.push(...indentedLines(note))
   }
   return lines.join('\n')
 }
@@ -237,6 +254,32 @@ export function annotationBlock(annotation: Annotation): string {
 export function annotationsPrompt(annotations: readonly Annotation[]): string {
   if (annotations.length === 0) return ''
   return annotations.map((annotation, index) => `${index + 1}. ${annotationBlock(annotation)}`).join('\n\n')
+}
+
+/**
+ * The text the composer inserts for the marked passages.
+ *
+ * The reader's own summary is already in the draft, and the passages follow it.
+ * Left on the same line, the summary and the first entry read as one sentence,
+ * so the passages start on the next line whenever something precedes them. The
+ * block itself keeps one blank line between entries, and the trailing blank
+ * line leaves room for the reader's body text under the passages.
+ * @param draft - the text already in the composer.
+ * @param annotations - the annotations being carried.
+ * @param caret - where the passages are inserted, as an offset into the draft.
+ * @returns the text to insert, or an empty string when there is nothing to carry.
+ */
+export function annotationInsertion(
+  draft: string,
+  annotations: readonly Annotation[],
+  caret: number = draft.length,
+): string {
+  const block = annotationsPrompt(annotations)
+  if (block === '') return ''
+  const at = Math.max(0, Math.min(caret, draft.length))
+  const before = draft.slice(0, at)
+  const breakBefore = before.trim().length > 0 ? '\n' : ''
+  return `${breakBefore}${block}\n\n`
 }
 
 /**

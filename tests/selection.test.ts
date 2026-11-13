@@ -11,7 +11,7 @@ import {
   promptForSideChat, quoteForDraft, quotedBlock,
 } from '../src/client/selection.ts'
 import {
-  addAnnotation, annotationBlock, annotationsOf, annotationsPrompt, clearAnnotations,
+  addAnnotation, annotationBlock, annotationInsertion, annotationsOf, annotationsPrompt, clearAnnotations,
   annotationsVisibleIn, removeAnnotation, subscribeAnnotations, updateAnnotationNote,
 } from '../src/client/annotations.ts'
 import { mountBadges, rangesOf, removeBadges } from '../src/client/anchors.ts'
@@ -80,8 +80,8 @@ describe('annotation prompt block', () => {
     ])
     expect(block).toBe([
       '1. Selected text:',
-      '   first line second line',
-      '',
+      '   first line',
+      '   second line',
       '   User comment:',
       '   tighten this',
       '',
@@ -96,7 +96,6 @@ describe('annotation prompt block', () => {
     expect(block).toBe([
       'Selected text:',
       `   ${'x'.repeat(139)}…`,
-      '',
       '   User comment:',
       '   n',
     ].join('\n'))
@@ -104,12 +103,17 @@ describe('annotation prompt block', () => {
 
   it('indents a comment written over several lines to the same column', () => {
     const block = annotationBlock({ id: 'd', passage: 'p', note: 'first\r\nsecond' })
-    expect(block).toBe(['Selected text:', '   p', '', '   User comment:', '   first', '   second'].join('\n'))
+    expect(block).toBe(['Selected text:', '   p', '   User comment:', '   first', '   second'].join('\n'))
+  })
+
+  it('keeps the line breaks of a passage that covers several lines', () => {
+    const block = annotationBlock({ id: 'e', passage: 'one\ntwo\nthree', note: '' })
+    expect(block).toBe(['Selected text:', '   one', '   two', '   three'].join('\n'))
   })
 
   it('renders one annotation as its two labelled blocks without a number', () => {
     expect(annotationBlock({ id: 'a', passage: 'quoted', note: 'do this' }))
-      .toBe('Selected text:\n   quoted\n\n   User comment:\n   do this')
+      .toBe('Selected text:\n   quoted\n   User comment:\n   do this')
     expect(annotationBlock({ id: 'b', passage: 'quoted', note: '' })).toBe('Selected text:\n   quoted')
   })
 
@@ -121,8 +125,55 @@ describe('annotation prompt block', () => {
     expect(prompt).toContain(annotationBlock(second))
   })
 
+  it('keeps one blank line between the entries', () => {
+    const prompt = annotationsPrompt([
+      { id: 'a', passage: 'one', note: 'first' },
+      { id: 'b', passage: 'two', note: 'second' },
+    ])
+    expect(prompt.split('\n\n')).toHaveLength(2)
+  })
+
   it('returns an empty string when there is nothing to carry', () => {
     expect(annotationsPrompt([])).toBe('')
+  })
+})
+
+describe('annotation insertion into the draft', () => {
+  it('starts the first entry on the next line when a summary precedes it', () => {
+    const text = annotationInsertion('先把这几个问题讨论完整。', [
+      { id: 'a', passage: 'quoted', note: 'do this' },
+    ])
+    expect(text).toBe([
+      '\n1. Selected text:',
+      '   quoted',
+      '   User comment:',
+      '   do this',
+      '',
+      '',
+    ].join('\n'))
+  })
+
+  it('starts at the first line when the draft is empty', () => {
+    const text = annotationInsertion('', [{ id: 'a', passage: 'quoted', note: '' }])
+    expect(text.startsWith('1. Selected text:')).toBe(true)
+  })
+
+  it('keeps the summary and the passages on separate lines', () => {
+    const draft = '先把这几个问题讨论完整，再进行下一阶段。'
+    const text = annotationInsertion(draft, [{ id: 'a', passage: 'quoted', note: 'n' }])
+    const whole = `${draft}${text}`
+    expect(whole.split('\n')[0]).toBe(draft)
+    expect(whole.split('\n')[1]).toBe('1. Selected text:')
+  })
+
+  it('inserts at the caret, not at the end of the draft', () => {
+    const draft = '总结在前。'
+    const text = annotationInsertion(draft, [{ id: 'a', passage: 'quoted', note: '' }], 0)
+    expect(text.startsWith('1. Selected text:')).toBe(true)
+  })
+
+  it('returns an empty string when there is nothing to carry', () => {
+    expect(annotationInsertion('draft', [])).toBe('')
   })
 })
 

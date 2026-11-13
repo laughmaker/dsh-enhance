@@ -24,7 +24,7 @@ import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-cl
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { SelectionToolbar, type AnnotationSubmit } from './SelectionToolbar.tsx'
 import {
-  addAnnotation, annotationBlock, annotationsOf, annotationsPrompt, annotationsVisibleIn, clearAnnotations,
+  addAnnotation, annotationBlock, annotationInsertion, annotationsOf, annotationsVisibleIn, clearAnnotations,
   removeAnnotation, subscribeAnnotations, updateAnnotationNote, type Annotation,
   type AnnotationAnchor,
 } from './annotations.ts'
@@ -258,10 +258,13 @@ export function AnnotationSeat(props: AnnotationSeatProps): ReactNode {
         // only annotations whose text is not already there get inserted.
         const missing = annotations.filter(annotation => !draft.includes(annotationBlock(annotation)))
         if (missing.length > 0) {
-          const text = `${annotationsPrompt(missing)}\n\n`
           const insertion = inputActions.captureInsertion()
+          const text = annotationInsertion(draft, missing, insertion.start)
           if (!inputActions.insertText(text, insertion)) {
-            inputActions.setDraft(`${draft}${draft === '' ? '' : '\n\n'}${text}`)
+            // The editor refused the insertion, so the draft is written instead.
+            // The passages still land after the summary, with the same break.
+            const fallback = annotationInsertion(draft, missing)
+            inputActions.setDraft(`${draft}${fallback}`)
             inputActions.persistDraft()
           }
         }
