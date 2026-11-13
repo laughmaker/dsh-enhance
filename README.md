@@ -309,3 +309,9 @@ QA 1× 复核在真实正文滚过时发现：`band = 0.92 × 半高`（≈18px�
 按用户本轮要求，四边 padding 各增加 5px：`12.5px 18.5px 12.5px 12.5px`，胶囊及承载行高度同步改为 50px，保持实际顶部 12px、标题字号和头像尺寸。高光由 2px/1px 多层内阴影减为约 0.5px 双向细亮边，投影同步减轻。hover 播放一次 440ms 横向舒展、纵向回弹并归位的动画；按下缩至 .97，减少动态效果偏好下关闭动画。完整半圆与折射链保留。
 
 影响 `chrome.ts`、对应 surface 断言与本说明，已重建 `lib/`。浏览器实测 50px 高、顶部 12px，hover 单次播放并归位，减少动态效果下动画为 none；上中下分别开关详情正常，34 项测试通过。截图 `~/tmp/dsh-enhance-chief/padding-hover-pill.png`，未提交。
+
+### 2026-11-13 · 右栏标签栏恢复可点击（标题栏拖拽带）
+
+上一轮移除右栏 `_rightbarCol` 的 40px `border-top` 留白后，文件/浏览器/终端共用的 dockkit 标签行落回原生标题栏拖拽带。宿主把整条 `_tabStrip` 标记为 `data-window-drag`（`app-region: drag`），其内边距、标签间隙与按钮右侧空白都会拖动窗口，点击被吞，整行看起来失效。改为在 `html[data-windows-titlebar]` 下把整条 `_tabStrip` 及其全部子节点（含 `_stripTabs`、`_stripChrome`、`_tab`、`_tabClose`、`_addTab` 与分栏/全屏/收起）设为 `-webkit-app-region: no-drag !important`，形成一个 no-drag 岛；位置不动，已消除的 40px 空白保留。
+
+影响：`chrome.ts`、`tests/surface.test.ts`，重建 `lib/`（`client.js` 270.21 kB）。用真实 `material.css` + `--dsh-windows-titlebar-height:40px` + `data-windows-titlebar`/`data-platform=darwin` 复刻桌面布局实测：改前 `_tabStrip`、空白区、上边缘均 `drag`，改后全部 `no-drag`；标签、×、＋、分栏、全屏、收起 computed 均为 `no-drag` 且为顶层元素（压过 `.frame::before` 拖拽带）。功能区点击自验：＋新增标签、分栏 strips 1→2、全屏切换为 Exit fullscreen、收起右栏宽 675→0 均生效。35 项 surface 测试通过。**证据边界**：浏览器内 `app-region` 不驱动真实窗口，原生 Electron 实机无法截图，未直接验证真机拖拽/点击；以 CSS 级联与顶层命中为据。诊断截图 `~/tmp/dsh-enhance-lg-dev/shots-tabs/`。未提交。

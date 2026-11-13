@@ -48,6 +48,31 @@ html[data-windows-titlebar] div[class*="_centerCol"] {
   border-top-left-radius: 0 !important;
 }
 
+/* Desktop material.css reserves a second caption band on the host's right
+   column using a 40px top border. File, browser and terminal tabs share this
+   column; let their own tab-strip padding supply the top clearance instead. */
+html[data-windows-titlebar] div[class*="_rightbarCol"] {
+  border-top: 0 !important;
+}
+
+/* With that 40px band gone the dockkit tab strip sits inside the native
+   title-bar drag region. The host marks the strip itself as a window drag
+   handle (data-window-drag → app-region: drag), so the strip's own padding,
+   the gap between tabs and the empty span beside the buttons all drag the
+   window: a click there moves the window instead of reaching the bar, and the
+   whole row reads as dead. Make the entire strip — tabs, close, +, split,
+   fullscreen, collapse and the space around them — one no-drag island.
+   Nothing is repositioned, so the removed 40px blank band stays gone. */
+html[data-windows-titlebar] [class*="_tabStrip_"],
+html[data-windows-titlebar] [class*="_tabStrip_"] *,
+html[data-windows-titlebar] [class*="_stripTabs_"],
+html[data-windows-titlebar] [class*="_stripChrome_"],
+html[data-windows-titlebar] [class*="_tab_"],
+html[data-windows-titlebar] [class*="_tabClose_"],
+html[data-windows-titlebar] [class*="_addTab_"] {
+  -webkit-app-region: no-drag !important;
+}
+
 /* Keep the user's settled 12px top offset. Absolute positioning preserves
    the host's horizontal centring as the sidebar and detail panel resize. */
 ${PILL_HEADER} {

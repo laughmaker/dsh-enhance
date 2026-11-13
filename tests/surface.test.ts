@@ -218,6 +218,20 @@ describe('style sets', () => {
     expect(dsBotChrome).not.toContain('body:has(.bt-panel)')
     expect(dsBotChrome).not.toContain('var(--bt-panel-w, 320px)')
   })
+
+  it('makes the dockkit tab strip a no-drag island in the title-bar band', () => {
+    // The 40px caption border on the right column is removed...
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] div[class*="_rightbarCol"]')
+    // ...so the strip would sit inside the native drag band; cover the whole
+    // strip and its controls so tabs/close/+ /split/fullscreen/collapse click.
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] [class*="_tabStrip_"]')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] [class*="_tabStrip_"] *')
+    expect(dsBotChrome).toContain('[class*="_stripTabs_"]')
+    expect(dsBotChrome).toContain('[class*="_stripChrome_"]')
+    expect(dsBotChrome).toContain('[class*="_addTab_"]')
+    expect(dsBotChrome).toContain('[class*="_tabClose_"]')
+    expect(dsBotChrome).toContain('-webkit-app-region: no-drag !important')
+  })
 })
 
 describe('badge routes and policies', () => {
