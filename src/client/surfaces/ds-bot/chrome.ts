@@ -373,4 +373,22 @@ button[data-sidebar-opener] {
 .bt-side-top .bt-brand {
   display: none !important;
 }
+
+/* ---- Account menu (bottom-left gear) — frostier, more opaque, larger radius ---- */
+
+/* The host paints every pop menu as a 78% (light) / 74% (dark) glass tint with
+   a 24px blur, so the sidebar's session titles still read through the bottom-left
+   account menu. Deepen only this menu: a stronger blur plus a more opaque surface
+   hide the text behind it, and a larger corner radius softens its edges. Scoped to
+   .bt-account-menu so the other pop menus keep the host's look; corner-shape is
+   left untouched so the curve stays consistent with the rest of the shell. */
+.bt-account-menu {
+  -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  background: color-mix(in srgb, var(--bt-main) 92%, transparent) !important;
+  border-radius: 16px !important;
+}
+body[data-ds-dark-theme] .bt-account-menu {
+  background: color-mix(in srgb, var(--bt-main) 90%, transparent) !important;
+}
 `
