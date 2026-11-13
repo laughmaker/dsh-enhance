@@ -232,6 +232,49 @@ describe('style sets', () => {
     expect(dsBotChrome).toContain('[class*="_tabClose_"]')
     expect(dsBotChrome).toContain('-webkit-app-region: no-drag !important')
   })
+
+  it('keeps the settings subheader clickable above the panel caption band', () => {
+    // The host paints its full --bt-caption-band as a positioned drag ::before
+    // strip; the 10px-inset settings panel must clamp it so it does not cover
+    // the back/close buttons' top half.
+    expect(dsBotChrome).toContain(
+      'html[data-windows-titlebar] .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-view > .bt-subhead)::before'
+    )
+    expect(dsBotChrome).toMatch(
+      /\.bt-subhead\)::before\s*\{\s*height:\s*10px !important;/
+    )
+    // The shared subheader (Bot settings and Group settings) is lifted above
+    // the strip and made a no-drag island end to end.
+    expect(dsBotChrome).toContain('> .bt-panel-view > .bt-subhead {')
+    expect(dsBotChrome).toContain('position: relative !important')
+    expect(dsBotChrome).toContain('z-index: 1 !important')
+    expect(dsBotChrome).toContain('> .bt-panel-view > .bt-subhead *')
+  })
+
+  it('nudges the section chevron onto the guide line and lifts the "…" action', () => {
+    // Section disclosure chevron: shift only the glyph left so its tip meets
+    // the hover guide line running through the child rows.
+    expect(dsBotChrome).toContain('.bt-leftcol .bt-sec-chev')
+    expect(dsBotChrome).toMatch(/\.bt-leftcol \.bt-sec-chev\s*\{[^}]*left:\s*-2\.5px !important;/)
+    // The "…" action is a smaller, thinner glyph than the "+"; enlarge its box
+    // and thicken its dots so the two read equally without touching colour.
+    expect(dsBotChrome).toContain('.bt-leftcol .bt-sec-acts .bt-sec-act:last-child svg')
+    expect(dsBotChrome).toMatch(
+      /\.bt-leftcol \.bt-sec-acts \.bt-sec-act:last-child svg\s*\{[^}]*width:\s*15px !important;[^}]*height:\s*15px !important;/
+    )
+    expect(dsBotChrome).toMatch(
+      /\.bt-leftcol \.bt-sec-acts \.bt-sec-act:last-child svg path\s*\{[^}]*stroke-width:\s*2\.8 !important;/
+    )
+  })
+
+  it('unblocks the slash-menu backdrop blur only while the composer menu is open', () => {
+    // The composer card's own backdrop-filter makes it a backdrop root and
+    // stops the "/" menu's declared blur from painting; drop it while open.
+    expect(dsBotChrome).toContain('[data-composer-card]:has([data-trigger-menu])')
+    expect(dsBotChrome).toMatch(
+      /\[data-composer-card\]:has\(\[data-trigger-menu\]\)\s*\{\s*-webkit-backdrop-filter:\s*none !important;\s*backdrop-filter:\s*none !important;/
+    )
+  })
 })
 
 describe('badge routes and policies', () => {

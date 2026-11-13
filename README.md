@@ -315,3 +315,11 @@ QA 1× 复核在真实正文滚过时发现：`band = 0.92 × 半高`（≈18px�
 上一轮移除右栏 `_rightbarCol` 的 40px `border-top` 留白后，文件/浏览器/终端共用的 dockkit 标签行落回原生标题栏拖拽带。宿主把整条 `_tabStrip` 标记为 `data-window-drag`（`app-region: drag`），其内边距、标签间隙与按钮右侧空白都会拖动窗口，点击被吞，整行看起来失效。改为在 `html[data-windows-titlebar]` 下把整条 `_tabStrip` 及其全部子节点（含 `_stripTabs`、`_stripChrome`、`_tab`、`_tabClose`、`_addTab` 与分栏/全屏/收起）设为 `-webkit-app-region: no-drag !important`，形成一个 no-drag 岛；位置不动，已消除的 40px 空白保留。
 
 影响：`chrome.ts`、`tests/surface.test.ts`，重建 `lib/`（`client.js` 270.21 kB）。用真实 `material.css` + `--dsh-windows-titlebar-height:40px` + `data-windows-titlebar`/`data-platform=darwin` 复刻桌面布局实测：改前 `_tabStrip`、空白区、上边缘均 `drag`，改后全部 `no-drag`；标签、×、＋、分栏、全屏、收起 computed 均为 `no-drag` 且为顶层元素（压过 `.frame::before` 拖拽带）。功能区点击自验：＋新增标签、分栏 strips 1→2、全屏切换为 Exit fullscreen、收起右栏宽 675→0 均生效。35 项 surface 测试通过。**证据边界**：浏览器内 `app-region` 不驱动真实窗口，原生 Electron 实机无法截图，未直接验证真机拖拽/点击；以 CSS 级联与顶层命中为据。诊断截图 `~/tmp/dsh-enhance-lg-dev/shots-tabs/`。未提交。
+
+### 2026-11-13 · 输入 `/` 命令菜单背景模糊
+
+用户反馈：输入 `/` 弹出的命令菜单透明度太高，后方正文透出、干扰菜单文字，要求增加背景模糊、必要时提高遮盖。实测定位到根因不在参数，而在叠层：菜单容器 `[data-trigger-menu]` 嵌在 composer 卡片 `[data-composer-card="true"]` 内，而卡片自身有 `backdrop-filter: blur(20px) saturate(1.8)`。带 `backdrop-filter` 的元素会成为 backdrop root，导致子级菜单材质层 `_material`（宿主声明 `rgba(252,253,254,.7)` + `blur(40px) saturate(1.5)`）的 `backdrop-filter` 取不到背景、**声明了却从不绘制**——正文因此原样清晰透出。实验证实：只把卡片的 `backdrop-filter` 临时去掉，菜单自身 `blur(40px)` 立刻生效、正文被糊。
+
+修法只加一条规则、不改任何颜色：`[data-composer-card]:has([data-trigger-menu]) { backdrop-filter: none !important }`——仅在某 composer 触发菜单（`/`、`@` 等）打开时临时摘掉卡片模糊，让菜单能重新采样页面、其自带 `blur(40px)` 真正起霜；菜单关闭即恢复卡片 `blur(20px)`。标题胶囊与其他非 composer 内菜单不受影响，明暗主题自动沿用宿主材质色。
+
+影响：`chrome.ts`、`tests/surface.test.ts`（新增 1 条断言），重建 `lib/client.js`（271.03 kB）、`lib/index.js`（3.54 kB）；profile 软链即仓库产物（md5 一致）。用真实构建产物（profile 加载、不注入）实测：菜单开→卡片 backdrop `none`、菜单材质 `rgba(252,253,254,.7)` + `blur(40px) saturate(1.5)`；Esc 后卡片恢复 `blur(20px)`；`ArrowDown/Up` 切换 active 到 command-0/1、Esc 关闭、Enter 选中插入 `/side`（消息数不变、未发送）。`surface.test.ts` 36 项通过；`selection.test.ts` 因本机缺 `jsdom` 无法启动 worker（pre-existing，与本次无关）。前后裁图 `~/tmp/dsh-enhance-lg-dev/shots-menu/BEFORE-vs-AFTER.png`（改前正文清晰透出 / 改后糊成柔影），全图 `01-slash-open.png`（前）与 `AFTER-plugin-open.png`（后）。**证据边界**：原生 Electron 未脚本化实拍，深色主题未单独真实切换核验（规则不改颜色，仅恢复宿主模糊）。未提交。

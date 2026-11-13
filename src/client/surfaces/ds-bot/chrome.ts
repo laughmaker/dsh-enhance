@@ -73,6 +73,20 @@ html[data-windows-titlebar] [class*="_addTab_"] {
   -webkit-app-region: no-drag !important;
 }
 
+/* The composer's "/" command menu is nested inside the composer card, which
+   sets its own backdrop-filter. A backdrop-filter turns its element into a
+   backdrop root, so the menu material's own backdrop-filter (the host declares
+   blur(40px)) has nothing to sample and never paints: the conversation text
+   behind the menu reads straight through it. Drop the card's blur only while
+   one of the composer's trigger menus is open, so the menu can sample the page
+   again and its declared blur finally frosts out the text behind it. The card's
+   blur returns as soon as the menu closes; the title pill and every menu that
+   is not rendered inside the composer card are untouched. */
+[data-composer-card]:has([data-trigger-menu]) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 /* Keep the user's settled 12px top offset. Absolute positioning preserves
    the host's horizontal centring as the sidebar and detail panel resize. */
 ${PILL_HEADER} {
@@ -251,6 +265,29 @@ html[data-windows-titlebar] .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-vie
   padding-top: 10px !important;
 }
 
+/* The host paints its whole --bt-caption-band as a positioned, drag-region
+   ::before strip on the panel. This panel's top inset is only 10px, so that
+   40px strip reached down over the subheader and swallowed clicks on the top
+   half of the back/close buttons (their own no-drag is painted over by the
+   strip, which sits above the static subheader). Clamp the strip to the same
+   10px inset so it never overlaps the interactive row. */
+html[data-windows-titlebar] .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-view > .bt-subhead)::before {
+  height: 10px !important;
+}
+
+/* Also lift the whole subheader above any residual drag strip and make it and
+   every descendant a no-drag island, so the back/close controls (Bot settings
+   and Group settings share this in-flow subheader) stay clickable at every
+   height, top edge included. */
+html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-panel-view > .bt-subhead {
+  position: relative !important;
+  z-index: 1 !important;
+}
+html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-panel-view > .bt-subhead,
+html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-panel-view > .bt-subhead * {
+  -webkit-app-region: no-drag !important;
+}
+
 /* Only expanded columns have an expanded minimum; the width module owns the
    actual drag. This keeps the static floor below the host's 264px. */
 .bt-leftcol:is([data-left="open"], [data-left="drawer"]) {
@@ -261,6 +298,31 @@ html[data-windows-titlebar] .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-vie
   /* With the toggle removed, keep the first avatar below native window controls.
      The live inline width still owns both the rail and its resize boundary. */
   padding-top: max(20px, calc(var(--bt-lc-clear, 0px) + 8px)) !important;
+}
+
+/* ---- Sidebar section headers (DS Bot tree) ---- */
+
+/* The disclosure chevron's glyph sits ~2.5px right of the hover guide line
+   that descends through the child rows (the 14px chev box is centred at 25px,
+   the guide at ~22.75px), so its tip misses the line. Nudge only the glyph
+   left with a relative offset so the tip lands on the guide; the title row,
+   its spacing and the button hit area stay exactly where they were. */
+.bt-leftcol .bt-sec-chev {
+  position: relative !important;
+  left: -2.5px !important;
+}
+
+/* The "…" section action renders as three ~1px dots in a 13px svg and reads far
+   fainter than the "+" beside it, although both share the same ink colour and
+   opacity (so colour is not the cause — the glyph is). Give the dots a slightly
+   larger glyph box (15px) and a heavier stroke so the three dots read at the
+   same weight as the "+"; colour, opacity and the button hit area are unchanged. */
+.bt-leftcol .bt-sec-acts .bt-sec-act:last-child svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+.bt-leftcol .bt-sec-acts .bt-sec-act:last-child svg path {
+  stroke-width: 2.8 !important;
 }
 
 /* The three sidebar actions read as normal tools, not filled buttons:
