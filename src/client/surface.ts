@@ -125,6 +125,7 @@ export interface SurfaceFeatures {
   documentPreview: boolean
   badge: boolean
   panelWidths: boolean
+  liquidGlass: boolean
 }
 
 /**
@@ -134,7 +135,8 @@ export interface SurfaceFeatures {
  * counts, whale, window geometry) stays off there. Annotations, side chat,
  * both context menus, markdown, document preview, and the badge mechanism stay
  * on. The running-marker and send-button looks are part of the DSH chrome
- * sheets, so they stay off with those sheets.
+ * sheets, so they stay off with those sheets. Edge refraction belongs to the
+ * DS Bot pill only: DSH draws no such pill, so it stays off there.
  * @param surface - the decided surface.
  * @returns the switches `apply` reads.
  */
@@ -156,6 +158,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
       sectionStats: false,
       whale: false,
       windowGeometry: false,
+      liquidGlass: true,
     }
   }
   return {
@@ -166,6 +169,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
     whale: true,
     windowGeometry: true,
     panelWidths: false,
+    liquidGlass: false,
   }
 }
 

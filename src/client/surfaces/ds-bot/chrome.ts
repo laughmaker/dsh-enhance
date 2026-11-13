@@ -37,8 +37,8 @@ body[data-ds-dark-theme] {
   height: 30px !important;
 }
 .bt-leftcol .bt-side-top .bt-round svg {
-  width: 20px !important;
-  height: 20px !important;
+  width: 18px !important;
+  height: 18px !important;
 }
 
 /* The visible inner corner belongs to the chat column, not .bt-leftcol.
@@ -48,24 +48,157 @@ html[data-windows-titlebar] div[class*="_centerCol"] {
   border-top-left-radius: 0 !important;
 }
 
-/* Keep the host's conversation-column centring, including panel resizing. */
+/* Keep the user's settled 12px top offset. Absolute positioning preserves
+   the host's horizontal centring as the sidebar and detail panel resize. */
 ${PILL_HEADER} {
-  position: absolute !important;
-  top: 20px !important;
+  top: 12px !important;
   padding: 0 !important;
 }
 
-/* The host's fading header backdrop must not paint a horizontal light band. */
+/* The host's fading header backdrop must not paint a horizontal light band,
+   and its 60px-tall ::before band also intercepted clicks over the pill's top
+   half (only the bottom sliver stayed hittable). Remove it entirely. */
 ${PILL_HEADER}::before {
   content: none !important;
   background: none !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Keep the pill fully clickable: the header/head pass clicks through except on
+   the pill itself, and the pill is never a window-drag handle. */
+${PILL_HEADER} .bt-head {
+  height: 50px !important;
+  pointer-events: none !important;
+}
+${PILL_HEADER} .bt-pill,
+${PILL_HEADER} .bt-pill * {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+}
+
+/* Liquid glass on the session-title pill, ported from
+   lucasromerodb/liquid-glass-effect-macos (the source behind the user's
+   CodeSandbox reference nn5q2y; that repo ships no LICENSE and is used as an
+   effect reference only). The reference layers one clipped shape as:
+     effect layer  - backdrop-filter: blur(3px) AND filter: url(#glass-distortion)
+                     on the SAME element, so the backdrop is softened first and
+                     bent afterwards by the turbulence displacement map;
+     tint layer    - a flat white 25% film over the bend;
+     shine layer   - two inset white shadows that draw the lit lip;
+     text layer    - the content, above every layer.
+   Here the effect layer is ::before, the tint and the shine share ::after, and
+   the pill's own box clips both to the capsule. The pill carries no border: the
+   reference has none, and its only outline is the shine. The soft drop shadow
+   is kept light. Padding grows by 5px on each side; height grows accordingly
+   so the avatar and title keep the same space inside the capsule. */
+${PILL_HEADER} .bt-pill {
+  position: relative !important;
+  height: 50px !important;
+  padding: 12.5px 18.5px 12.5px 12.5px !important;
+  /* Own the silhouette instead of inheriting a host/theme corner radius. */
+  border-radius: 9999px !important;
+  corner-shape: round !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  --dsh-lg-tint: rgba(255, 255, 255, .25);
+  /* No border: the reference draws the edge with the shine layer alone. */
+  border: none !important;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .10),
+    0 0 8px rgba(0, 0, 0, .04) !important;
+}
+
+/* Dark glass takes a much lighter white tint: the backdrop is already dark, and
+   the reference's 25% film over it turns the pill into a grey card. */
+body[data-ds-dark-theme] ${PILL_HEADER} .bt-pill {
+  --dsh-lg-tint: rgba(255, 255, 255, .08);
+  box-shadow:
+    0 3px 3px rgba(0, 0, 0, .34),
+    0 0 10px rgba(0, 0, 0, .18) !important;
+}
+
+/* The glass itself: the softening pass and the bend ride the same element, as
+   in the reference. The bend uses the plain filter property because Chromium
+   drops a url() from backdrop-filter; the unset variable keeps this at none, so
+   the frosted fallback still works. */
+${PILL_HEADER} .bt-pill::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  border-radius: inherit !important;
+  corner-shape: round !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  -webkit-backdrop-filter: var(--dsh-lg-backdrop, blur(3px)) !important;
+  backdrop-filter: var(--dsh-lg-backdrop, blur(3px)) !important;
+  -webkit-filter: var(--dsh-lg-filter, none) !important;
+  filter: var(--dsh-lg-filter, none) !important;
+  pointer-events: none !important;
+}
+
+/* The body of the glass and its lip: the reference's flat white film plus its
+   two inset shines, one catching the light on the top-left curve and one
+   holding the bottom-right edge. That pair is what makes the outline read as
+   a thin bright lip at 1x; a single top highlight only brightens the top. */
+${PILL_HEADER} .bt-pill::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  border-radius: inherit !important;
+  corner-shape: round !important;
+  background: var(--dsh-lg-tint) !important;
+  box-shadow:
+    inset .5px .5px .75px 0 rgba(255, 255, 255, .45),
+    inset -.5px -.5px .75px 0 rgba(255, 255, 255, .28) !important;
+  pointer-events: none !important;
+}
+
+/* Avatar, name and back arrow sit above both layers so the text stays crisp
+   instead of getting washed by the tint. */
+${PILL_HEADER} .bt-pill > * {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+/* A single gentle squash-and-stretch on entry, then settle at the original
+   size. The outer header stays still, preserving centring and hit geometry. */
+@keyframes dsh-pill-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.045, .96); }
+  65% { transform: scale(.985, 1.025); }
+  100% { transform: scale(1); }
+}
+${PILL_HEADER} .bt-pill:hover {
+  --dsh-lg-tint: rgba(255, 255, 255, .32);
+  animation: dsh-pill-pop 440ms cubic-bezier(.22, .61, .36, 1) both !important;
+}
+body[data-ds-dark-theme] ${PILL_HEADER} .bt-pill:hover {
+  --dsh-lg-tint: rgba(255, 255, 255, .12);
+}
+${PILL_HEADER} .bt-pill:active {
+  animation: none !important;
+  transform: scale(.97) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ${PILL_HEADER} .bt-pill:hover,
+  ${PILL_HEADER} .bt-pill:active {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* The settled panel starts at chrome-top. Absolute positioning also follows
-   its entrance animation instead of changing fixed containing blocks midway. */
+   its entrance animation instead of changing fixed containing blocks midway.
+   Top-aligned with the 14px traffic lights (their top sits at 13px in the 40px
+   band), as requested — the row's own top edge matches the lights' top edge. */
 ${CORNER_ROW} {
   position: absolute !important;
-  top: calc(20px - var(--dsh-frame-chrome-top, 0px)) !important;
+  top: calc(13px - var(--dsh-frame-chrome-top, 0px)) !important;
   right: 20px !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -81,10 +214,9 @@ ${CORNER_ROW} button,
   -webkit-app-region: no-drag !important;
 }
 
-/* Reserve the detached buttons' 36px height down to viewport y=56. The
-   caption band and optional panel tabs already contribute to this clearance. */
+/* Reserve the detached buttons' 36px height down to viewport y=49 (13 + 36). */
 .bt-panel-view:has(> .bt-drawer-top) {
-  padding-top: max(0px, calc(56px - var(--bt-caption-band, 0px))) !important;
+  padding-top: max(0px, calc(49px - var(--bt-caption-band, 0px))) !important;
 }
 
 /* The settings view uses an in-flow subheader instead of .bt-drawer-top.
@@ -115,6 +247,24 @@ html[data-windows-titlebar] .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-vie
 }
 .bt-side-top .bt-round:hover {
   background: color-mix(in srgb, var(--bt-hover) 60%, transparent) !important;
+  color: var(--bt-ink) !important;
+}
+
+/* The rail's + button carries the same disc as the account and plugins
+   buttons: those wrap their icon in a 36px round bt-you disc, which is a
+   #262626 fill with a 1px inner ring, and that ring reads as the button face.
+   The host's .bt-round only fills the button, so paint the same disc here. */
+.bt-leftcol-foot-rail .bt-round {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  border-color: transparent !important;
+  background: #262626 !important;
+  box-shadow: inset 0 0 0 1px rgba(242, 242, 242, .08) !important;
+  color: var(--bt-ink-2) !important;
+}
+.bt-leftcol-foot-rail .bt-round:hover {
+  background: color-mix(in srgb, #262626 82%, var(--bt-hover)) !important;
   color: var(--bt-ink) !important;
 }
 

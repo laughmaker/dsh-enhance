@@ -23,6 +23,7 @@ import { installWhaleBubbles } from './whale-bubbles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
+import { installLiquidGlass } from './surfaces/ds-bot/liquid-glass.ts'
 import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
@@ -86,6 +87,10 @@ export function apply(ctx: Context): void {
   // owns the expanded drag gesture on that surface so the sidebar can narrow to
   // 220px and the details panel to 260px; the browser panel keeps its own range.
   if (features.panelWidths) ctx.effect(() => installPanelWidths(document), 'dsh-enhance: panel widths')
+  // Frosted blur alone reads as plastic. This publishes the rim refraction of
+  // the session pill as a CSS variable chrome.ts consumes; when the shell
+  // cannot refract, the variable stays unset and the frosted fallback applies.
+  if (features.liquidGlass) ctx.effect(() => installLiquidGlass(document), 'dsh-enhance: liquid glass')
   // The "Workspaces" heading names the tree under it and nothing more. The row
   // that replaces it counts sessions and workspaces, and switches to running
   // and unread counts while either of those is above zero.
