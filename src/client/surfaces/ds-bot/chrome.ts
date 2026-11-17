@@ -352,6 +352,34 @@ html[data-windows-titlebar] .bt-leftcol-grip {
   -webkit-app-region: no-drag !important;
 }
 
+/* ---- Bot shortcut tile: let the card hold its role label ---- */
+
+/* The pinned bot card shrink-wraps to its 60px avatar, but the role chip
+   ("Chief Bot Officer") is content-box with 1px 7px padding and a 92px cap, so
+   it measured ~104px and spilled ~5px past the card on each side — the chip's
+   rounded background showed outside the card's rounded bottom. Let the card
+   grow to fit the label with equal side padding, and keep an over-long label
+   wrapped inside the card instead of poking out when the sidebar is narrow.
+   The avatar and its status badge are untouched; a short label leaves a compact
+   card, and a single-line label stays on one line. Not scoped to
+   data-windows-titlebar: the overflow shows in a plain browser too. */
+.bt-leftcol .bt-tile {
+  width: auto !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+.bt-leftcol .bt-tile .bt-chip {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  text-align: center !important;
+  line-height: 1.25 !important;
+  height: auto !important;
+}
+
 /* ---- Sidebar section headers (DS Bot tree) ---- */
 
 /* The disclosure chevron's glyph sits ~2.5px right of the hover guide line

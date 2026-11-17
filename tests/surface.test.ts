@@ -263,6 +263,21 @@ describe('style sets', () => {
     expect(dsBotChrome.match(/-webkit-app-region: drag !important/g)).toHaveLength(1)
   })
 
+  it('lets the bot tile grow to hold its role chip instead of clipping past the card', () => {
+    // The pinned bot card shrink-wraps to its 60px avatar, but the role chip is
+    // content-box and wider, so its rounded background spilled past the card.
+    // Expand the card with equal side padding and wrap an over-long label
+    // inside it. A general rule: a plain browser shows the same overflow.
+    expect(dsBotChrome).toMatch(
+      /\.bt-leftcol \.bt-tile\s*\{[^}]*width:\s*auto !important;[^}]*max-width:\s*100% !important;[^}]*padding-left:\s*12px !important;[^}]*padding-right:\s*12px !important;/
+    )
+    expect(dsBotChrome).toMatch(
+      /\.bt-leftcol \.bt-tile \.bt-chip\s*\{[^}]*max-width:\s*100% !important;[^}]*box-sizing:\s*border-box !important;[^}]*white-space:\s*normal !important;[^}]*overflow-wrap:\s*anywhere !important;/
+    )
+    // The fix must not be gated behind the desktop shell only.
+    expect(dsBotChrome).not.toMatch(/html\[data-windows-titlebar\] \.bt-leftcol \.bt-tile/)
+  })
+
   it('keeps the settings subheader clickable above the panel caption band', () => {
     // The host paints its full --bt-caption-band as a positioned drag ::before
     // strip; the 10px-inset settings panel must clamp it so it does not cover
