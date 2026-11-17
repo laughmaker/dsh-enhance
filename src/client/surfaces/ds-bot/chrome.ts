@@ -231,6 +231,28 @@ ${PILL_HEADER} .bt-pill:active {
   }
 }
 
+/* A group session with an active goal renders the same .bt-pill inside a
+   .bt-island card (the pill row plus a goal bar below it). The host squares that
+   card off — its own 20px, open 18px superellipse corners tuck inside the
+   pill's 9999px capsule, so the outer card's top corners read squarer than the
+   capsule they wrap. The pill is 50px tall, so its capsule resolves each corner
+   to a 25px radius; give the island that exact radius and the same round
+   corner-shape, and hand it to the goal bar / panel that paint the island's
+   bottom edge, so the inner capsule and the outer card share one curve in both
+   the collapsed (goal bar) and open (goal panel) states. Scoped to the session
+   header island; the plain header pill (no island ancestor) is untouched, and
+   the transition the host declares on the island keeps animating the change. */
+${PILL_HEADER} .bt-island {
+  border-radius: 25px !important;
+  corner-shape: round !important;
+}
+${PILL_HEADER} .bt-island:not([data-open]) .bt-goal-bar {
+  border-radius: 0 0 25px 25px !important;
+}
+${PILL_HEADER} .bt-island .bt-goal-panel {
+  border-radius: 0 0 25px 25px !important;
+}
+
 /* The settled panel starts at chrome-top. Absolute positioning also follows
    its entrance animation instead of changing fixed containing blocks midway.
    Top-aligned with the 14px traffic lights (their top sits at 13px in the 40px

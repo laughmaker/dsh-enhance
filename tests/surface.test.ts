@@ -170,9 +170,10 @@ describe('style sets', () => {
     expect(dsBotChrome).toContain('height: 50px !important')
     expect(dsBotChrome).toContain('padding: 12.5px 18.5px 12.5px 12.5px !important')
     expect(dsBotChrome).toContain('border-radius: 9999px !important')
-    // Theme corner-shape can make even a huge radius a squircle. Own all three
-    // silhouettes so desktop theme overrides cannot square off the end caps.
-    expect(dsBotChrome.match(/corner-shape: round !important/g)).toHaveLength(3)
+    // Theme corner-shape can make even a huge radius a squircle. Own every round
+    // silhouette: the pill and its two glass layers (3), plus the goal island
+    // card that wraps the same pill so its outer corners match the capsule.
+    expect(dsBotChrome.match(/corner-shape: round !important/g)).toHaveLength(4)
     // The reference has no border: the outline is the shine layer alone. A
     // hairline border is what made the pill read as a rounded rectangle.
     expect(dsBotChrome).toContain('border: none !important')
