@@ -239,6 +239,30 @@ describe('style sets', () => {
     expect(dsBotChrome).toContain('-webkit-app-region: no-drag !important')
   })
 
+  it('drags the desktop window from the sidebar background, controls keep no-drag', () => {
+    // The left column is the drag handle on the frameless desktop shell, so its
+    // empty gaps (around the tile, below the list, between sections) move the
+    // window. Scoped to data-windows-titlebar: a browser tab has no window.
+    expect(dsBotChrome).toMatch(
+      /html\[data-windows-titlebar\] \.bt-leftcol\s*\{\s*-webkit-app-region:\s*drag !important;/
+    )
+    // Every control inside the column is carved back out of that region so it
+    // keeps its pointer events: rows/tile/headers/actions/account are buttons,
+    // plus links, inline editors, menus and the width grip.
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol button,')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol a,')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol input,')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol textarea,')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol [role="menu"],')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol-grip {')
+    expect(dsBotChrome).toMatch(
+      /html\[data-windows-titlebar\] \.bt-leftcol-grip \{\s*-webkit-app-region:\s*no-drag !important;/
+    )
+    // The only drag rule is the scoped one; nothing else turns the column into a
+    // drag handle outside the desktop shell.
+    expect(dsBotChrome.match(/-webkit-app-region: drag !important/g)).toHaveLength(1)
+  })
+
   it('keeps the settings subheader clickable above the panel caption band', () => {
     // The host paints its full --bt-caption-band as a positioned drag ::before
     // strip; the 10px-inset settings panel must clamp it so it does not cover

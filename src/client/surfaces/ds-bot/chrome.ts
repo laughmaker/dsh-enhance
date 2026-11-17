@@ -322,6 +322,36 @@ html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-
   padding-top: max(20px, calc(var(--bt-lc-clear, 0px) + 8px)) !important;
 }
 
+/* ---- Window drag from the sidebar background (desktop only) ---- */
+
+/* The desktop shell is frameless, so the sidebar's empty background is the
+   natural place to grab the window on the left. The host's base.css turns the
+   data-window-drag marker into the sole darwin drag region and
+   data-window-drag-recall into its no-drag carve-out; here the whole left
+   column becomes that region, and every control inside it is carved back out.
+   A drag region is the union of the drag boxes minus the no-drag boxes, so the
+   gaps around the pinned tile, the spacer below the session list, the section
+   spacing and the area beside the rows all drag the window, while the rows,
+   group headers, buttons, menus, inputs and the width grip keep every pointer
+   event (clicks, hover, right-click, wheel). Scoped to data-windows-titlebar so
+   a plain browser tab — which has no native window to move — is left alone.
+   The grip is carved out so panel-widths.ts keeps owning its resize gesture. */
+html[data-windows-titlebar] .bt-leftcol {
+  -webkit-app-region: drag !important;
+}
+html[data-windows-titlebar] .bt-leftcol button,
+html[data-windows-titlebar] .bt-leftcol a,
+html[data-windows-titlebar] .bt-leftcol input,
+html[data-windows-titlebar] .bt-leftcol textarea,
+html[data-windows-titlebar] .bt-leftcol select,
+html[data-windows-titlebar] .bt-leftcol [contenteditable="true"],
+html[data-windows-titlebar] .bt-leftcol [role="menu"],
+html[data-windows-titlebar] .bt-leftcol [role="menuitem"],
+html[data-windows-titlebar] .bt-leftcol [role="menuitemcheckbox"],
+html[data-windows-titlebar] .bt-leftcol-grip {
+  -webkit-app-region: no-drag !important;
+}
+
 /* ---- Sidebar section headers (DS Bot tree) ---- */
 
 /* The disclosure chevron's glyph sits ~2.5px right of the hover guide line
