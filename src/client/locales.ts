@@ -50,6 +50,8 @@ export const zh = {
   'linkMenu.done.copied': '已复制链接',
   'linkMenu.done.saved': '已保存',
   'linkMenu.saveFailed': '无法下载该链接（可能受跨域限制）',
+  'anno.quote': '引用原文',
+  'anno.comment': '我的意见',
 } as const
 
 /** Toolbar copy, English. */
@@ -99,6 +101,8 @@ export const en: Record<keyof typeof zh, string> = {
   'linkMenu.done.copied': 'Link copied',
   'linkMenu.done.saved': 'Saved',
   'linkMenu.saveFailed': 'Could not download this link (cross-origin restrictions may apply)',
+  'anno.quote': 'Quoted text',
+  'anno.comment': 'My note',
 }
 
 /** The key set every dictionary must cover. */

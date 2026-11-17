@@ -92,9 +92,14 @@ describe('feature switches', () => {
 })
 
 describe('style sets', () => {
-  it('keeps the eight DSH sheets untouched', () => {
-    expect(SHEETS).toHaveLength(8)
+  it('keeps the DSH sheets and adds the shared annotation display sheet', () => {
+    expect(SHEETS).toHaveLength(9)
+    expect(SHEETS.map(([name]) => name)).toContain('annotation-display.css')
     expect(sheetsFor('dsh')).toBe(SHEETS)
+  })
+
+  it('mounts the shared annotation display sheet on DS Bot too', () => {
+    expect(DS_BOT_SHEETS.map(([name]) => name)).toContain('annotation-display.css')
   })
 
   it('mounts no DSH chrome sheet on DS Bot', () => {

@@ -41,6 +41,8 @@ let openSideChat: SessionId | undefined
  */
 let openingSideChat: Promise<void> | undefined
 import { AnnotationSeat, type AnnotationSeatInjected } from './AnnotationSeat.tsx'
+import { AnnotationDisplay } from './AnnotationDisplay.tsx'
+import { ANNOTATION_RULE_ID, annotationDisplayRule } from './annotation-display.ts'
 import { addAnnotation, type AnnotationAnchor } from './annotations.ts'
 import { registerSideChat, rememberTitle, sideChatAddress } from './side-chat.ts'
 
@@ -52,7 +54,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Required services: slots, dictionaries, the Session Remote, session status, the Workspace list, and the right Sidebar. */
-export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs', 'remote', 'remote.session']
+export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces', 'conversation', 'sidebarRight', 'resources', 'sidebarRightTabs', 'remote', 'remote.session', 'uiConversation']
 
 /**
  * Mount the plugin.
@@ -172,6 +174,21 @@ export function apply(ctx: Context): void {
     locale: LOCALE_NS,
     inject: (): AnnotationSeatInjected => ({ askInSideChat }),
   }, AnnotationSeat)), 'dsh-enhance: annotation seat')
+
+  // A sent annotation keeps its exact wire text — the model still receives the
+  // numbered entries and copying the message still yields them — but the
+  // transcript paints each entry as a labelled group. The rule lifts the entries
+  // out of the message text; the renderer draws them. Both run on the shared
+  // conversation text factory, so DSH and DS Bot get the same display.
+  if (features.annotations) {
+    ctx.effect(() => ctx.uiConversation.userText.register(annotationDisplayRule), 'dsh-enhance: annotation display rule')
+    ctx.effect(() => ctx.slots.inject('conversation.user.text.node', () => ctx.slots.register({
+      name: 'conversation.user.text.node',
+      key: ANNOTATION_RULE_ID,
+      priority: 100,
+      inject: () => ({ t }),
+    }, AnnotationDisplay)), 'dsh-enhance: annotation display')
+  }
 }
 
 /**

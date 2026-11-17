@@ -141,4 +141,35 @@ describe('registered sheets', () => {
     const rule = new RegExp(`\\[${ENTRIES_ATTRIBUTE}\\] button:has\\(svg, img\\) \\{[^}]*font-size: 0`)
     expect(css).toMatch(rule)
   })
+
+  it('keeps the annotation labels opaque enough to read', () => {
+    const css = SHEETS.find(([name]) => name === 'annotation-display.css')?.[1] ?? ''
+    // The label is small text (11.4px / 600) on the bubble, so it has to clear
+    // the 4.5:1 contrast floor. A transparent colour composited over the bubble
+    // drops it below that — the blue was 2.84:1 and the purple 3.09:1 that way.
+    const quote = /\.dsh-enhance-anno__label--quote \{[^}]*color: ([^;]+);/.exec(css)?.[1]?.trim()
+    const comment = /\.dsh-enhance-anno__label--comment \{[^}]*color: ([^;]+);/.exec(css)?.[1]?.trim()
+    expect(quote).toBe('#1d4ed8')
+    expect(comment).toBe('#6d28d9')
+    // The dark rules keep the light blue and light purple, also opaque.
+    expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__label--quote \{[^}]*color: #60a5fa/)
+    expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__label--comment \{[^}]*color: #a78bfa/)
+  })
+
+  it('hangs the quote rule under the entry number digit', () => {
+    const css = SHEETS.find(([name]) => name === 'annotation-display.css')?.[1] ?? ''
+    // The rule reads like an outline indent guide: it sits centred under the
+    // number's digit, not at the text's left edge. It is painted by a
+    // positioned pseudo-element (a border cannot be moved off the box edge
+    // without shifting the text), and the quote keeps its 12px text inset.
+    const quote = /\.dsh-enhance-anno__quote \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(quote).toContain('position: relative')
+    expect(quote).toContain('padding-left: 12px')
+    expect(quote).not.toContain('border-left')
+    const rule = /\.dsh-enhance-anno__quote::before \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(rule).toContain('left: 3px')
+    expect(rule).toContain('width: 2px')
+    expect(rule).toContain('rgb(37 99 235 / 30%)')
+    expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__quote::before \{[^}]*rgb\(96 165 250 \/ 38%\)/)
+  })
 })

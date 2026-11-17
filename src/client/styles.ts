@@ -8,6 +8,7 @@ import { css as sidebarDensity } from './styles/sidebar-density.ts'
 import { css as sidebarLayout } from './styles/sidebar-layout.ts'
 import { css as toolbar } from './styles/toolbar.ts'
 import { css as fileMenu } from './styles/file-menu.ts'
+import { css as annotationDisplay } from './styles/annotation-display.ts'
 import { css as dsBotChrome } from './surfaces/ds-bot/chrome.ts'
 import { css as dsBotMarkdownAnchors } from './surfaces/ds-bot/markdown-anchors.ts'
 import { currentSurface, stylePluginId, type Surface } from './surface.ts'
@@ -25,6 +26,7 @@ export const SHEETS: readonly (readonly [string, string])[] = [
   ['sidebar-layout.css', sidebarLayout],
   ['toolbar.css', toolbar],
   ['file-menu.css', fileMenu],
+  ['annotation-display.css', annotationDisplay],
 ]
 
 /** Rules both apps share verbatim: markdown, annotation chrome, context menus. */
@@ -33,6 +35,7 @@ const SHARED_SHEETS: readonly (readonly [string, string])[] = [
   ['chat-markdown.css', chatMarkdown],
   ['toolbar.css', toolbar],
   ['file-menu.css', fileMenu],
+  ['annotation-display.css', annotationDisplay],
 ]
 
 /** DS Bot mounts the shared rules plus its own chrome and md anchors; no DSH chrome. */
