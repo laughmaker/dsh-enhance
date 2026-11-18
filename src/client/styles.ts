@@ -11,6 +11,7 @@ import { css as fileMenu } from './styles/file-menu.ts'
 import { css as annotationDisplay } from './styles/annotation-display.ts'
 import { css as dsBotChrome } from './surfaces/ds-bot/chrome.ts'
 import { css as dsBotMarkdownAnchors } from './surfaces/ds-bot/markdown-anchors.ts'
+import { css as dsBotOlder } from './surfaces/ds-bot/auto-load-earlier.ts'
 import { currentSurface, stylePluginId, type Surface } from './surface.ts'
 
 /** Stable plugin identity stamped onto every injected style tag. */
@@ -43,6 +44,7 @@ export const DS_BOT_SHEETS: readonly (readonly [string, string])[] = [
   ...SHARED_SHEETS,
   ['ds-bot-chrome.css', dsBotChrome],
   ['ds-bot-markdown-anchors.css', dsBotMarkdownAnchors],
+  ['ds-bot-older.css', dsBotOlder],
 ]
 
 /**

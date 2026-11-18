@@ -126,6 +126,7 @@ export interface SurfaceFeatures {
   badge: boolean
   panelWidths: boolean
   liquidGlass: boolean
+  autoLoadEarlier: boolean
 }
 
 /**
@@ -159,6 +160,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
       whale: false,
       windowGeometry: false,
       liquidGlass: true,
+      autoLoadEarlier: true,
     }
   }
   return {
@@ -170,6 +172,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
     windowGeometry: true,
     panelWidths: false,
     liquidGlass: false,
+    autoLoadEarlier: false,
   }
 }
 

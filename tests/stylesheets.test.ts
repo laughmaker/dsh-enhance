@@ -156,20 +156,34 @@ describe('registered sheets', () => {
     expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__label--comment \{[^}]*color: #a78bfa/)
   })
 
-  it('hangs the quote rule under the entry number digit', () => {
+  it('aligns the quote on a shared number-width column, with the rule in the gutter', () => {
     const css = SHEETS.find(([name]) => name === 'annotation-display.css')?.[1] ?? ''
-    // The rule reads like an outline indent guide: it sits centred under the
-    // number's digit, not at the text's left edge. It is painted by a
-    // positioned pseudo-element (a border cannot be moved off the box edge
-    // without shifting the text), and the quote keeps its 12px text inset.
+    // The group is a two-column grid: column 1 is max-content (the number's own
+    // width), column 2 holds the quoted label and the passage. The head dissolves
+    // into the grid so the number takes column 1 and the label column 2.
+    const anno = /\.dsh-enhance-anno \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(anno).toContain('display: grid')
+    expect(anno).toContain('grid-template-columns: max-content 1fr')
+    const head = /\.dsh-enhance-anno__head \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(head).toContain('display: contents')
+    // The passage sits on the same column as the quoted label, so they start at
+    // the same x however many digits the number has; it no longer carries the
+    // old 12px text inset that pushed it left of the label.
     const quote = /\.dsh-enhance-anno__quote \{([^}]*)\}/.exec(css)?.[1] ?? ''
-    expect(quote).toContain('position: relative')
-    expect(quote).toContain('padding-left: 12px')
+    expect(quote).toContain('grid-column: 2')
+    expect(quote).not.toContain('padding-left')
     expect(quote).not.toContain('border-left')
-    const rule = /\.dsh-enhance-anno__quote::before \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    // The comment spans the whole row.
+    const block = /\.dsh-enhance-anno__comment-block \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(block).toContain('grid-column: 1 / -1')
+    // The rule is painted by the number-column gutter, centred under the digit.
+    const gutter = /\.dsh-enhance-anno__gutter \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(gutter).toContain('grid-column: 1')
+    expect(gutter).toContain('align-self: stretch')
+    const rule = /\.dsh-enhance-anno__gutter::before \{([^}]*)\}/.exec(css)?.[1] ?? ''
     expect(rule).toContain('left: 3px')
     expect(rule).toContain('width: 2px')
     expect(rule).toContain('rgb(37 99 235 / 30%)')
-    expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__quote::before \{[^}]*rgb\(96 165 250 \/ 38%\)/)
+    expect(css).toMatch(/data-ds-dark-theme\] \.dsh-enhance-anno__gutter::before \{[^}]*rgb\(96 165 250 \/ 38%\)/)
   })
 })

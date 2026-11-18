@@ -1,12 +1,14 @@
 /**
  * The display form of a sent annotation entry.
  *
- * One entry is one compact group: its number and a small "quoted" label, the
- * passage under a hairline rule in the secondary text colour, then the reader's
- * own comment under a "my note" label in the normal foreground. It paints inside
- * the message bubble it arrived in — no card, no fill, nothing that competes with
- * the bubble. Groups are tight; the blank line the writer puts between entries is
- * what separates them.
+ * One entry is a two-column grid: the entry number sits in a column exactly as
+ * wide as the number itself, and the quoted label, the passage and (below them)
+ * the reader's own comment share the second column — so the passage always
+ * starts at the same x as the "quoted" label, whether the entry is number 1 or
+ * 12. The comment spans both columns. It paints inside the message bubble it
+ * arrived in — no card, no fill, nothing that competes with the bubble. Groups
+ * are tight; the blank line the writer puts between entries is what separates
+ * them.
  *
  * Labels use literal colours rather than a single theme token: blue reads as
  * "this is the quoted passage", purple as "this is what I said about it", and
@@ -14,30 +16,35 @@
  * opaque, because the label is small text and has to clear the 4.5:1 contrast
  * floor on both bubble colours.
  */
-export const css = String.raw`/* The whole entry. Block level so it starts on its own line inside the bubble,
-   and small vertical margins so consecutive entries breathe without a gap. */
+export const css = String.raw`/* The whole entry. A two-column grid: the number takes a max-content column, the
+   quoted label and passage share the second column, and the comment spans both.
+   Block level so it starts on its own line inside the bubble. */
 .dsh-enhance-anno {
-  display: block;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 6px;
+  row-gap: 2px;
+  align-items: baseline;
   margin: 6px 0 4px;
   padding: 0;
   font: inherit;
   line-height: 1.55;
 }
 
-/* Number and the "quoted" label share one baseline row. */
+/* The head dissolves into the grid: its number lands in column 1 and the quoted
+   label in column 2, on one shared baseline row. */
 .dsh-enhance-anno__head {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0 0 2px;
-  line-height: 1.4;
+  display: contents;
 }
 
 .dsh-enhance-anno__number {
+  grid-column: 1;
+  grid-row: 1;
   color: var(--dsw-alias-label-caption);
   font-size: .85em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.4;
 }
 
 .dsh-enhance-anno__label {
@@ -50,6 +57,8 @@ export const css = String.raw`/* The whole entry. Block level so it starts on it
 /* Saturated blue: the quoted passage. Opaque, so the small label still reads
    against the light bubble (5.7:1 on the #ECECEC bubble). */
 .dsh-enhance-anno__label--quote {
+  grid-column: 2;
+  grid-row: 1;
   color: #1d4ed8;
 }
 
@@ -71,24 +80,20 @@ body[data-ds-dark-theme] .dsh-enhance-anno__label--comment {
   color: #a78bfa;
 }
 
-/* The passage: secondary body colour, hung off a thin vertical rule. pre-wrap
-   keeps the passage's own line breaks (and any blank line inside it). The rule
-   is drawn as a pseudo-element so it can sit centred under the entry number's
-   digit (not its trailing dot), like an outline indent guide; padding keeps the
-   text inset exactly as the old border-left did (12px from the quote's edge). */
-.dsh-enhance-anno__quote {
+/* Empty cell under the entry number. It stretches to the passage's height so the
+   vertical rule runs the length of the quote, while staying in the number
+   column (the "hanging indent" guide) rather than at the text's left edge. */
+.dsh-enhance-anno__gutter {
+  grid-column: 1;
+  grid-row: 2;
   position: relative;
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  padding-left: 12px;
-  color: var(--dsw-alias-label-secondary);
+  align-self: stretch;
 }
 
-/* The hairline itself: 2px wide, its centre ~3.9px from the quote's left edge —
-   the centre of the first (tabular) digit of the entry number, so single- and
-   double-digit entries share one vertical guide line. */
-.dsh-enhance-anno__quote::before {
+/* The hairline: 2px wide, its centre ~3.9px from the entry's left edge — the
+   centre of the first (tabular) digit of the number, so single- and multi-digit
+   entries share one vertical guide line however wide the number column is. */
+.dsh-enhance-anno__gutter::before {
   content: "";
   position: absolute;
   top: 0;
@@ -98,12 +103,25 @@ body[data-ds-dark-theme] .dsh-enhance-anno__label--comment {
   background: rgb(37 99 235 / 30%);
 }
 
-body[data-ds-dark-theme] .dsh-enhance-anno__quote::before {
+body[data-ds-dark-theme] .dsh-enhance-anno__gutter::before {
   background: rgb(96 165 250 / 38%);
 }
 
-/* The comment block keeps normal foreground weight and colour. */
+/* The passage: secondary body colour, on the shared text column so it lines up
+   with the "quoted" label. pre-wrap keeps the passage's own line breaks (and any
+   blank line inside it). */
+.dsh-enhance-anno__quote {
+  grid-column: 2;
+  grid-row: 2;
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* The comment spans both columns, so it starts at the entry's left edge. */
 .dsh-enhance-anno__comment-block {
+  grid-column: 1 / -1;
   display: block;
   margin: 0;
 }

@@ -24,6 +24,7 @@ import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
 import { installLiquidGlass } from './surfaces/ds-bot/liquid-glass.ts'
+import { installAutoLoadEarlier } from './surfaces/ds-bot/auto-load-earlier.ts'
 import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
@@ -93,6 +94,14 @@ export function apply(ctx: Context): void {
   // the session pill as a CSS variable chrome.ts consumes; when the shell
   // cannot refract, the variable stays unset and the frosted fallback applies.
   if (features.liquidGlass) ctx.effect(() => installLiquidGlass(document), 'dsh-enhance: liquid glass')
+  // The host only loads the previous page when its "Load earlier" button is
+  // clicked. This clicks it as the reader scrolls back up and shows a light
+  // indicator while the older page is on its way. The reading position is
+  // this module's own work: it keeps the row the reader was on in place and
+  // gives the growth of the older page back to the scroller, because the
+  // host's own paging anchor holds the first row of the list and not the
+  // row the reader was reading.
+  if (features.autoLoadEarlier) ctx.effect(() => installAutoLoadEarlier(ctx, document, t), 'dsh-enhance: auto load earlier')
   // The "Workspaces" heading names the tree under it and nothing more. The row
   // that replaces it counts sessions and workspaces, and switches to running
   // and unread counts while either of those is above zero.

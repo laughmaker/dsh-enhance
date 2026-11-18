@@ -40,6 +40,9 @@ export function AnnotationDisplay(props: AnnotationDisplayProps): ReactNode {
         <span className="dsh-enhance-anno__number">{`${number}.`}</span>
         <span className="dsh-enhance-anno__label dsh-enhance-anno__label--quote">{t('anno.quote')}</span>
       </span>
+      {/* Empty cell in the number column; it paints the vertical rule so the rule
+          stays under the digit while the quote sits on the shared text column. */}
+      <span className="dsh-enhance-anno__gutter" aria-hidden="true" />
       <span className="dsh-enhance-anno__quote">{quote.join('\n')}</span>
       {comment === undefined ? null : (
         <span className="dsh-enhance-anno__comment-block">

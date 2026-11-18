@@ -28,3 +28,25 @@
 ### 验证证据与边界
 
 浏览器渲染、主题 squircle 覆盖测试、上下中点击及动效检查已完成；截图与诊断脚本保存在 `~/tmp/dsh-enhance-chief/`，该路径为临时证据，不作为永久资源依赖。原生 Electron 与真实深色未在本轮独立实拍，不据此宣称覆盖。本文记录工作方法，不替代后续改动的验证。
+
+## 2026-11-18：上滚自动加载更早消息的阅读位置保持
+
+### 结果与问题
+
+宿主的「Load earlier」只在点击时翻页。本轮实现「上滚到接近顶部自动触发一次加载 + 顶部轻量动画」，并要求旧消息插入后读者正在读的那行留在原处。最初打算把位置交给宿主自己的分页锚点（`data-chat-paging-anchor`），实测失败：宿主只标记列表**第一行**，不对读者正在读的那一行做补偿，旧页一插内容整体下移，读者读的那行最多漂移 3k+ px（手动点宿主按钮同样漂移，属宿主行为）。改为插件自己保住读者行后，浏览器渲染实测漂移 0px。
+
+### 可复用教训
+
+1. **先确认宿主锚点盯的是哪一行。** 分页锚点 ≠ 阅读位置。必须查清宿主标记对象（本例是列表首行、且只在未展开的分组行上设），再决定是自己接管还是要它。
+2. **一次性校正即可。** 记下读者行的内容坐标 `place = rowTop - contentTop + scrollTop`，旧页插入后仅按内容增长量做一次 `scrollTop` 校正即可把该行放回原处；不必持续跟踪，读者自己的滚动不改 `place`，天然互不干扰。
+3. **关掉浏览器原生 `overflow-anchor`，否则双重补偿。** 浏览器滚动锚定会在同一插入里再加一次偏移，与插件校正叠加，残差可达数百 px。只在加载窗口内对 scroller 子树临时打 `overflow-anchor: none !important` 的运行时 `<style>`，结束即移除；不要放进常驻样式表（会把整个会话的原生锚定都关掉）。
+4. **`String.raw` 拼接后紧跟 `(` 的 ASI 陷阱。** `el.textContent = \`...\`` 后缺分号、下一行以 `(...)` 开头时，会被解析成 tagged-template 调用，运行时报 `SCROLLER… is not a function`。拼接样式文本后必须另起 `const host = …` / `host.appendChild(...)` 两行，别让 `(` 紧贴模板。
+5. **漂移要按「内容增长前最后一条 scroll 事件」的读者行测。** 用滚轮自然触发，监听 scroller 的 `scroll` 事件记录 `{scrollTop, scrollHeight, 读者行 key + 视口 offset}`；找到 `scrollHeight` 跃增的那条，其前一条即为真正触发前的阅读位置，再对比该行最终 offset，才是可信漂移。（直接写 `scrollTop=0` 不行——宿主会自己把它拉回。）
+
+### 影响文件
+
+`src/client/surfaces/ds-bot/auto-load-earlier.ts`（新增）、`src/client/index.tsx`（挂载 + 注释）、`src/client/surface.ts`（feature 开关）、`src/client/styles.ts`（新增一张 DS Bot 专属样式表）、`src/client/locales.ts`（加载文案中英）、`tests/auto-load-earlier.test.ts`（新增）、`tests/surface.test.ts`。
+
+### 验证证据与边界
+
+浏览器（Playwright Chromium，`127.0.0.1:63639`）实测：自然上滚触发，`scrollHeight` 增长 `2204→4502`、`scrollTop 64→2378`，读者行 `off` 前后均为 23px（漂移 0）；加载中 spinner「Loading earlier messages…」可见、宿主按钮 `visibility:hidden`、加载窗口内 `overflow-anchor` 覆盖样式存在，结束后 spinner 消失、按钮恢复可见、覆盖样式移除。`pnpm test` 217 项全过、`pnpm build` 通过。**未覆盖**：原生 Electron 下宿主插入时序与插件校正写入的先后；读者「持续不断」上滚时宿主 `readerSampled → stopPreserving` 会打断保持（属宿主行为，非本插件缺陷）。探针与截图为 `~/tmp/dsh-enhance-qa/` 临时证据。

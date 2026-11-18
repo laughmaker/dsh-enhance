@@ -217,6 +217,18 @@ describe('style sets', () => {
     expect(featuresFor('dsh').panelWidths).toBe(false)
   })
 
+  it('loads earlier messages on scroll on DS Bot only', () => {
+    // The host's load-earlier button sits above the DS Bot transcript. DSH keeps
+    // its own paging, so the module stays off there.
+    expect(featuresFor('ds-bot').autoLoadEarlier).toBe(true)
+    expect(featuresFor('dsh').autoLoadEarlier).toBe(false)
+  })
+
+  it('mounts the auto-loader sheet on DS Bot only', () => {
+    expect(DS_BOT_SHEETS.map(([name]) => name)).toContain('ds-bot-older.css')
+    expect(SHEETS.map(([name]) => name)).not.toContain('ds-bot-older.css')
+  })
+
   it('keeps host horizontal layout and removes the desktop inner corner and fade', () => {
     expect(dsBotChrome).toContain('html[data-windows-titlebar] div[class*="_centerCol"]')
     expect(dsBotChrome).toContain('border-top-left-radius: 0 !important')

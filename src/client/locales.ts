@@ -52,6 +52,7 @@ export const zh = {
   'linkMenu.saveFailed': '无法下载该链接（可能受跨域限制）',
   'anno.quote': '引用原文',
   'anno.comment': '我的意见',
+  'autoLoad.loading': '正在加载更早的消息…',
 } as const
 
 /** Toolbar copy, English. */
@@ -102,7 +103,8 @@ export const en: Record<keyof typeof zh, string> = {
   'linkMenu.done.saved': 'Saved',
   'linkMenu.saveFailed': 'Could not download this link (cross-origin restrictions may apply)',
   'anno.quote': 'Quoted text',
-  'anno.comment': 'My note',
+  'anno.comment': 'User comment',
+  'autoLoad.loading': 'Loading earlier messages…',
 }
 
 /** The key set every dictionary must cover. */
