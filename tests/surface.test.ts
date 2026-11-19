@@ -275,6 +275,19 @@ describe('style sets', () => {
     expect(dsBotChrome.match(/-webkit-app-region: drag !important/g)).toHaveLength(1)
   })
 
+  it('hands the sidebar background back to clicks while a sidebar popup is open', () => {
+    // The account/context menus are body-level .bt-menu overlays. With the
+    // column a drag handle, Electron swallows the pointerdown the host needs to
+    // close them, so the empty area looks stuck. While any sidebar .bt-menu is
+    // open, drop the drag so the outside click lands and dismisses the popup.
+    expect(dsBotChrome).toMatch(
+      /html\[data-windows-titlebar\] body:has\(> \.bt-menu\) \.bt-leftcol\s*\{\s*-webkit-app-region:\s*no-drag !important;/
+    )
+    // It is the only rule keyed on the open-menu overlay, so no other state can
+    // accidentally leave the column non-draggable.
+    expect(dsBotChrome.match(/body:has\(> \.bt-menu\)/g)).toHaveLength(1)
+  })
+
   it('lets the bot tile grow to hold its role chip instead of clipping past the card', () => {
     // The pinned bot card shrink-wraps to its 60px avatar, but the role chip is
     // content-box and wider, so its rounded background spilled past the card.

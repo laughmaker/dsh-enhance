@@ -352,6 +352,20 @@ html[data-windows-titlebar] .bt-leftcol-grip {
   -webkit-app-region: no-drag !important;
 }
 
+/* A sidebar popup (account menu, section/row context menu) is rendered as a
+   body-level .bt-menu overlay, so the pointerdown that the host's outside-click
+   handler needs to dismiss it lands on the sidebar background — which the rule
+   above makes a window-drag handle. Electron's drag region swallows that
+   pointerdown, so the outside click never reaches the handler and the menu looks
+   stuck when the empty area is clicked. Hand the whole column back to pointer
+   events while a sidebar .bt-menu is open; the :has() stops matching the moment
+   the overlay is removed and dragging returns. A .bt-menu exists only while a
+   popup is open (none is parked in the DOM), and any other popup also dismisses
+   on the first background click, so widening the no-drag window for it is safe. */
+html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
+  -webkit-app-region: no-drag !important;
+}
+
 /* ---- Bot shortcut tile: let the card hold its role label ---- */
 
 /* The pinned bot card shrink-wraps to its 60px avatar, but the role chip
