@@ -4,7 +4,7 @@
 
 - **共用部分**：Markdown 主题、划词批注、侧栏提问、文件与网页右键菜单、md 与文件预览。两边的规则与配色完全一致，不出两套皮肤。
 - **外壳分开**：DS Bot 有自己的一套 `ds-` 风格界面（标题栏、胶囊、弹层、侧栏），DSH 保持并增强原生外观。
-- **状态分开**：Dock 完成角标的机制两端都有，但**计数口径各端不同**（见下）；存储键、角标路由也各走各的，两个应用互不串。
+- **状态分开**：Dock 完成角标的机制两端都有，但**计数口径与绘制通道各端不同**（见下）；存储键也各走各的，两个应用互不串。
 
 安装是两端各自独立：装进哪个应用的 profile 就只影响哪个应用，各存一份自己的文件。只有本地开发用软链时，两个 profile 才指向本仓库的同一份 `lib/` 产物。
 
@@ -17,7 +17,7 @@
 | 界面外壳 | 原生外观 + 本插件的侧栏与状态增强 | 独立的 `ds-` 风格外壳：标题栏胶囊、账号菜单、弹层圆角、侧栏布局等 |
 | 侧栏最小宽度 | 214px（上游 264px） | 220px；详情面板 260px；宽度会记住 |
 | Dock 角标计数来源 | 宿主会话状态的 `completionUnread`（与侧栏绿点同源），后台跑完另行补记 | DS Bot 自己左栏里带未读点的行数（Bot 行、群聊行各算一行，一行多个标记只算一次；收起成图标栏时不计） |
-| 角标路由 | `POST /dsh-enhance/badge` | `POST /ds-bot-enhance/badge` |
+| 角标绘制通道 | 插件自己的 Host 路由 `POST /dsh-enhance/badge` | DS Bot 自带的桌面角标桥（渲染进程 → IPC → 系统 Dock） |
 | 存储键 | `dsh-enhance.*` | `ds-bot-enhance.*`（与 DSH 不共享） |
 
 下面的功能清单逐条标注了适用范围：**［共用］** 两个应用都启用且表现一致；**［DSH］** 仅 DSH 生效；**［DS Bot］** 仅 DS Bot 生效。Dock 角标两端都启用、但计数口径分端，标为 **［共用·分端］**。
@@ -46,7 +46,8 @@
 - **［共用·分端］Dock 完成角标** — macOS Dock 图标上的红色数字 = 侧栏里「跑完还没看」的会话数量。某会话跑完而你没在看它就 +1，点开读一下即 -1，全部读完角标消失。计数是宿主状态的投影，不自行累加，因此不需要自己的持久化，刷新后重算出的结果与侧栏一致。
   - **两个应用的计数来源不同**：DSH 直接映射宿主 `uiSession.sessionStatus.completionUnread`（与侧栏绿点同一数据源），跳过空白占位与子代理会话；DS Bot 读自己左栏渲染的未读点，按**行**计数——Bot 与群聊各占一行，一行多个标记只算一次，历史与子代理会话不渲染成行、自然不计入。**收起成图标栏时左栏不渲染这些行、角标取不到，数字会变小或清零**，它反映的是此刻屏幕上看得见的未读行，不是累计值。
   - **窗口在后台跑完的会话会补记（仅 DSH）**：宿主只在「跑完的会话不在当前主栏」时标记未读，切到别的应用时跑完的那条仍在屏幕上、宿主不标记；DSH 下插件自行观察 running→idle 的边沿，页面失焦时补记、回到窗口即清除。DS Bot 不走这个补记，只数已经渲染出来的未读行。
-  - 画角标走插件自己的 Host 路由：页面把数字 POST 给主进程，主进程用 `app.dock.setBadge` 画角标——Electron 渲染层不实现 Badging API，之前走 `navigator.setAppBadge` 是空操作；普通浏览器里仍保留 Badging API 作为备选。
+  - **画角标的通道两端不同**：DSH 由页面把数字 POST 给插件自己的 Host 路由，主进程用 `app.dock.setBadge` 画角标——Electron 渲染层不实现 Badging API，之前走 `navigator.setAppBadge` 是空操作。DS Bot 的插件 Host 跑在主进程之外、拿不到 `app.dock`，那条路由画不出角标（返回 `painted:false`），因此改走 DS Bot 自己的桌面角标桥（渲染进程 → IPC → 系统 Dock），直接覆盖宿主写的那个数字；普通浏览器里仍保留 Badging API 作为备选。
+  - **计数跟着侧栏走**：DS Bot 侧以左栏已渲染的未读行为准，侧栏或会话状态变化后会重新计数并写入 Dock。
 
 ## DSH 专属功能
 
@@ -154,6 +155,7 @@ DSH 大版本升级后，插件依赖的插槽与 DOM 契约可能变化，需�
 
 ## 已知限制
 
+- **DS Bot 的 Dock 角标尚待原生验证。** 宿主按 `unread || pending` 统计，插件按侧栏可见未读行计数。两者都会写入 Dock，宿主更新后若未触发插件重绘，可能覆盖插件写入的数字。自动化测试覆盖插件重绘和清零，原生验收以侧栏有 1 个未读时 Dock 显示 1、点开后角标消失为准。
 - **DSH 里表格竖线穿过输入框的问题尚未修复。** 现象：表格中的竖线会穿过下方的输入框；根因待确认，也暂未拿到可复现的会话。
 - **侧栏空白拖窗仅有浏览器侧规则验证。** 原生 Electron 窗口是否真正跟手、拖动带背景上的滚轮行为未经实机核实（Playwright Chromium 的 `app-region` 不生效，证明不了移动本身）。图标栏（rail）态在本 macOS 构建的折叠按钮为 `display:none`，无法从界面触达，规则与状态无关但未实机跑到该态。
 - **上滚自动加载更早消息的阅读位置保持，在浏览器渲染下实测通过。** 阅读位置由插件自己保住：记下读者正在读的那一行，旧页插入后按内容增长量一次性校正 `scrollTop`，加载窗口内临时关掉浏览器 `overflow-anchor` 以免重复补偿（宿主的分页锚点盯的是列表第一行，不是读者行，单靠它会让内容整体下移）。浏览器实测中，旧消息插入后，读者正在看的消息位置保持稳定。同一帧内若仍有滚轮输入，视口会随输入移动。加载指示在插入后消失，宿主按钮恢复可点。深色是浏览器 `prefers-color-scheme` 下实测，非应用内主题切换；原生 Electron 下宿主的插入时序若与浏览器不同，校正写入与宿主 `write()` 的先后需再核。
@@ -174,7 +176,7 @@ DSH 大版本升级后，插件依赖的插槽与 DOM 契约可能变化，需�
 
 | 文件 | 作用 |
 |---|---|
-| `src/index.ts` | Node 侧入口：注册两个应用的 Dock 角标路由 |
+| `src/index.ts` | Node 侧入口：注册两个应用的 Dock 角标路由（DS Bot 已改走宿主角标桥，路由仅 DSH 在用） |
 | `src/badge-route.ts` | 两 app 的角标路由（`/dsh-enhance/badge`、`/ds-bot-enhance/badge`） |
 | `src/client/index.tsx` | 客户端 `apply(ctx)`：按 surface 挂载各功能 |
 | `src/client/surface.ts` | 判断当前是 DSH 还是 DS Bot，给出该 surface 的 `features` 开关与样式表集合 |
@@ -192,7 +194,7 @@ DSH 大版本升级后，插件依赖的插槽与 DOM 契约可能变化，需�
 | `src/client/sidebar-width.ts` | 记住侧栏宽度（DSH 与 DS Bot 各用一键） |
 | `src/client/sidebar-top-row.ts` | 把插件的侧栏底部图标搬进顶部行（DSH） |
 | `src/client/window-geometry.ts` | 窗口几何：首次铺满可用区域，之后恢复上次的窗口位置与大小（DSH） |
-| `src/client/turn-badge.ts` | Dock 未读角标（把数字报给 Host 路由） |
+| `src/client/turn-badge.ts` | Dock 未读角标：DSH 走 Host 路由，DS Bot 走宿主自带的桌面角标桥 |
 | `src/client/badge-policy.ts` | 两 app 的角标计数口径 |
 | `src/client/whale-bubbles.ts` | 鲸鱼身后的水泡（DSH） |
 | `src/client/locales.ts` | 插件自己的文案（中英） |
