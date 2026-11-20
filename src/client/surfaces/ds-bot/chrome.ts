@@ -394,6 +394,32 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
   height: auto !important;
 }
 
+/* The footer's native .bt-account/.bt-you styles provide the button and disc. */
+.bt-leftcol-foot .ds-open-artifact-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+.bt-leftcol-foot .ds-open-artifact-icon::before,
+.bt-leftcol-foot .ds-open-artifact-icon::after {
+  content: '';
+  position: absolute;
+  box-sizing: border-box;
+  width: 10px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 2.5px;
+}
+.bt-leftcol-foot .ds-open-artifact-icon::before {
+  top: 0;
+  right: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 42% 100%, 42% 30%, 0 30%);
+}
+.bt-leftcol-foot .ds-open-artifact-icon::after {
+  bottom: 0;
+  left: 0;
+}
+
 /* ---- Sidebar section headers (DS Bot tree) ---- */
 
 /* The disclosure chevron's glyph sits ~2.5px right of the hover guide line

@@ -25,6 +25,7 @@ import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
 import { installLiquidGlass } from './surfaces/ds-bot/liquid-glass.ts'
 import { installAutoLoadEarlier } from './surfaces/ds-bot/auto-load-earlier.ts'
+import { installOpenArtifactButton } from './surfaces/ds-bot/open-artifact.ts'
 import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
@@ -63,9 +64,15 @@ export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'workspaces',
  */
 export function apply(ctx: Context): void {
   const t: TranslateNS<typeof LOCALE_NS> = ctx.locale.bind(LOCALE_NS)
-  const features = featuresFor(currentSurface())
+  const surface = currentSurface()
+  const features = featuresFor(surface)
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
+  if (surface === 'ds-bot') {
+    ctx.inject(['layout'], scope => {
+      scope.effect(() => installOpenArtifactButton(scope, document), 'dsh-enhance: Open Artifact footer')
+    })
+  }
   // The whale on the empty page swims through a trail of small bubbles. The
   // bubbles are drawn by the stylesheet; this only lets them go at the fish.
   if (features.whale) ctx.effect(() => installWhaleBubbles(document), 'dsh-enhance: whale bubbles')
