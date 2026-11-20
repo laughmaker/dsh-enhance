@@ -11,10 +11,9 @@
  *
  * Painting goes through the Host, not the page: Electron's renderer does not
  * implement the Badging API, so `navigator.setAppBadge` resolved to nothing and
- * the icon stayed bare while the sidebar showed dots. DS Bot desktop uses
- * its preload badge bridge, because its plugin Host runs outside the main
- * process. Other clients report to the plugin Host route. A plain browser
- * still gets the Badging API when it has one.
+ * the icon stayed bare while the sidebar showed dots. DSH reports to the
+ * plugin Host route; a plain browser uses the Badging API when available.
+ * DS Bot owns its badge and this module does not write to it.
  *
  * Counting the dots instead of accumulating transitions keeps the tile
  * honest: it equals what the sidebar shows, it falls as conversations are
@@ -31,8 +30,8 @@
  * clears those marks (the reader is looking at that conversation again).
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { badgeRouteFor } from '../badge-route.ts'
-import { badgePolicyFor, unreadSidebarRows } from './badge-policy.ts'
+import { BADGE_ROUTE } from '../badge-route.ts'
+import { completionUnreadIds } from './badge-policy.ts'
 import { currentSurface } from './surface.ts'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -107,7 +106,7 @@ function postBadgeCount(count: number): void {
   if (typeof base !== 'string' || base === '') return
   let url: string
   try {
-    url = new URL(badgeRouteFor(currentSurface()), base).href
+    url = new URL(BADGE_ROUTE, base).href
   } catch {
     return
   }
@@ -170,48 +169,6 @@ function documentAttention(): AttentionSource | undefined {
   }
 }
 
-interface DsBotBadgeWindow extends Window {
-  dsBotApp?: { setBadge?(count: number): void }
-}
-
-/** Follow rendered unread rows and paint them through the desktop renderer bridge. */
-export function installDsBotDockBadge(
-  root: Document,
-  paint: (count: number) => void,
-  subscribe: (refresh: () => void) => () => void,
-): () => void {
-  const sidebarSelector = '.bt-leftcol'
-  let sidebar = root.querySelector(sidebarSelector)
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const refresh = () => {
-    if (timer !== undefined) return
-    // React may paint the host badge during its own effects. Read the settled
-    // sidebar afterwards, even when the unread count itself did not change.
-    timer = setTimeout(() => {
-      timer = undefined
-      paint(unreadSidebarRows(root).length)
-    }, 50)
-  }
-  const observer = new MutationObserver(records => {
-    const next = sidebar?.isConnected ? sidebar : root.querySelector(sidebarSelector)
-    if (next !== sidebar || records.some(({ target }) => next?.contains(target))) refresh()
-    sidebar = next
-  })
-  observer.observe(root.documentElement, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    attributeFilter: ['class', 'hidden', 'data-left', 'data-collapsed'],
-  })
-  const stop = subscribe(refresh)
-  refresh()
-  return () => {
-    observer.disconnect()
-    stop()
-    clearTimeout(timer)
-  }
-}
-
 /**
  * Install the unread-session Dock badge.
  * @param ctx - client root context providing the sessions and uiSession services.
@@ -219,6 +176,8 @@ export function installDsBotDockBadge(
  * @returns disposer.
  */
 export function installTurnBadge(ctx: Context, deps: TurnBadgeDeps = {}): () => void {
+  // DS Bot owns its Dock badge, even if this installer is called directly.
+  if (currentSurface() === 'ds-bot') return () => {}
   const badgeNavigator = navigator as Navigator & Partial<BadgeLike>
   const badge = deps.badge
     ?? (typeof badgeNavigator.setAppBadge === 'function'
@@ -231,28 +190,12 @@ export function installTurnBadge(ctx: Context, deps: TurnBadgeDeps = {}): () => 
   const attentionSource = deps.attention ?? documentAttention()
   const statusStore = deps.statusSource
     ?? (ctx as unknown as { uiSession?: { sessionStatus?: BadgeStatusStore } }).uiSession?.sessionStatus
-  const surface = currentSurface()
-  if (surface === 'ds-bot' && deps.paintHost === undefined && typeof window !== 'undefined') {
-    const bridge = (window as DsBotBadgeWindow).dsBotApp
-    if (typeof bridge?.setBadge === 'function') {
-      return installDsBotDockBadge(document, count => bridge.setBadge?.(count), refresh => {
-        const stopStatus = statusStore?.subscribe(refresh)
-        const stopList = ctx.sessions.list.subscribe(refresh)
-        const stopAttention = attentionSource?.subscribe(refresh)
-        return () => {
-          stopStatus?.()
-          stopList()
-          stopAttention?.()
-        }
-      })
-    }
-  }
   if (statusStore === undefined) return () => {}
 
   // Retire the v1 accumulating count so a stale number cannot haunt the
   // projection-based badge after an update.
   try {
-    localStorage.removeItem(currentSurface() === 'ds-bot' ? 'ds-bot-enhance.badge.legacy.v1' : LEGACY_STORAGE_KEY)
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
   } catch {
     /* nothing to retire when storage is blocked */
   }
@@ -287,9 +230,7 @@ export function installTurnBadge(ctx: Context, deps: TurnBadgeDeps = {}): () => 
       Record<string, BadgeSessionRow & { running?: boolean }>
     >
     observeRunning(byId)
-    const policy = badgePolicyFor(currentSurface())
-    const statusView = { get: (id: string) => statusStore.getSnapshot().get(id) }
-    const count = policy.select(byId, statusView, attention).length
+    const count = completionUnreadIds(byId, statusStore.getSnapshot(), attention).length
     if (painted === count) return
     painted = count
     // The Host owns the native tile; a browser with the Badging API paints its

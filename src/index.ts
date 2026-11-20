@@ -6,10 +6,10 @@
  * implemented by Electron's renderer, so the call that used to paint the tile
  * was a silent no-op. The native surface lives in the main process
  * (`app.dock.setBadge`), so this half exposes the routes the page reports the
- * count to. One route per surface; the page only POSTs the one it belongs to.
+ * count to. DS Bot maintains its own Dock badge and does not use this route.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { BADGE_ROUTE, badgeRouteFor } from './badge-route.ts'
+import { BADGE_ROUTE } from './badge-route.ts'
 
 /** Request face the route reads (structural subset of `IncomingMessage`). */
 interface BadgeRequest {
@@ -99,10 +99,12 @@ async function paintDockBadge(count: number): Promise<boolean> {
 }
 
 /**
- * Mount one badge route per surface on the Host's web server.
+ * Mount the DSH badge route on the Host's web server.
  * @param ctx - host context carrying `webServer` and `connection`.
  */
 export function apply(ctx: Context): void {
+  // DS Bot sets this marker when it launches its desktop plugin Host.
+  if (process.env.DS_BOT_APP === '1') return
   const scope = ctx as unknown as {
     inject?: (deps: string[], callback: (ctx: Context) => void) => void
   }
@@ -137,12 +139,9 @@ export function apply(ctx: Context): void {
       res.end(JSON.stringify({ ok: true, painted }))
     }
 
-    /** One exact route per surface; the page picks its own. */
-    const register = (): (() => void) => {
-      const paths = [BADGE_ROUTE, badgeRouteFor('ds-bot')]
-      const stops = paths.map(path => webServer.register({ kind: 'exact', path, handler }))
-      return () => { for (const stop of stops) stop() }
-    }
+    /** Only DSH has a plugin-owned badge route. */
+    const register = (): (() => void) =>
+      webServer.register({ kind: 'exact', path: BADGE_ROUTE, handler })
 
     // Own the routes for exactly the plugin's lifetime: an unloaded row must not
     // keep a handler that paints a badge for a plugin that is gone.

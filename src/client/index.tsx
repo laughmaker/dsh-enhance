@@ -125,8 +125,7 @@ export function apply(ctx: Context): void {
   if (features.windowGeometry && isDesktopShell()) {
     ctx.effect(() => installStartupGeometry(window), 'dsh-enhance: window geometry')
   }
-  // Finished-while-away conversations mark the Dock tile through the standard
-  // Badging API; the module no-ops where the webview does not implement it.
+  // DSH reports unread completions to its Host route and the browser Badging API.
   if (features.badge) ctx.effect(() => installTurnBadge(ctx), 'dsh-enhance: turn badge')
   if (features.sideChat) registerSideChat(ctx, t)
 

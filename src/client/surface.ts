@@ -3,7 +3,7 @@
  *
  * One plugin serves both DeepSeek Harness and DS Bot. Their chrome differs, so
  * the process decides once and only one branch mounts. Shared features
- * (annotations, markdown, menus, the badge mechanism) run on both.
+ * (annotations, markdown and menus) run on both.
  */
 
 /** The two hosts this plugin knows. */
@@ -134,9 +134,9 @@ export interface SurfaceFeatures {
  *
  * DS Bot draws its own sidebar, so the DSH chrome (width, icon row, section
  * counts, whale, window geometry) stays off there. Annotations, side chat,
- * both context menus, markdown, document preview, and the badge mechanism stay
- * on. The running-marker and send-button looks are part of the DSH chrome
- * sheets, so they stay off with those sheets. Edge refraction belongs to the
+ * both context menus, markdown and document preview stay on. DS Bot owns its
+ * Dock badge; this plugin only paints the DSH badge. The running-marker and
+ * send-button looks follow the DSH chrome sheets. Edge refraction belongs to the
  * DS Bot pill only: DSH draws no such pill, so it stays off there.
  * @param surface - the decided surface.
  * @returns the switches `apply` reads.
@@ -154,6 +154,7 @@ export function featuresFor(surface: Surface): SurfaceFeatures {
   if (surface === 'ds-bot') {
     return {
       ...shared,
+      badge: false,
       sidebarFloor: false,
       sidebarTopRow: false,
       sectionStats: false,

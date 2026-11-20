@@ -9,10 +9,10 @@ import {
   type Surface,
 } from '../src/client/surface.ts'
 import { DS_BOT_SHEETS, SHEETS, sheetsFor } from '../src/client/styles.ts'
-import { BADGE_ROUTE, badgeRouteFor } from '../src/badge-route.ts'
+import { BADGE_ROUTE } from '../src/badge-route.ts'
 import { storageKeyFor as sidebarKeyFor } from '../src/client/sidebar-width.ts'
 import { storageKeyFor as geometryKeyFor } from '../src/client/window-geometry.ts'
-import { badgePolicyFor, completionUnreadIds, unreadSidebarRows } from '../src/client/badge-policy.ts'
+import { completionUnreadIds } from '../src/client/badge-policy.ts'
 import { DSH_SELECTORS, DS_BOT_SELECTORS, selectorsFor } from '../src/client/selectors.ts'
 import { css as dsBotMarkdownAnchors } from '../src/client/surfaces/ds-bot/markdown-anchors.ts'
 import { css as dsBotChrome } from '../src/client/surfaces/ds-bot/chrome.ts'
@@ -80,9 +80,14 @@ describe('feature switches', () => {
   it('keeps every shared feature on in both apps', () => {
     for (const surface of ['dsh', 'ds-bot'] as Surface[]) {
       const f = featuresFor(surface)
-      expect([f.annotations, f.sideChat, f.fileMenu, f.markdown, f.documentPreview, f.badge])
-        .toEqual([true, true, true, true, true, true])
+      expect([f.annotations, f.sideChat, f.fileMenu, f.markdown, f.documentPreview])
+        .toEqual([true, true, true, true, true])
     }
+  })
+
+  it('leaves the DS Bot badge to its host while keeping DSH enabled', () => {
+    expect(featuresFor('ds-bot').badge).toBe(false)
+    expect(featuresFor('dsh').badge).toBe(true)
   })
 
   it('gives each surface its own style identity', () => {
@@ -348,38 +353,8 @@ describe('style sets', () => {
 })
 
 describe('badge routes and policies', () => {
-  it('separates the two routes', () => {
+  it('keeps the DSH route', () => {
     expect(BADGE_ROUTE).toBe('/dsh-enhance/badge')
-    expect(badgeRouteFor('dsh')).toBe('/dsh-enhance/badge')
-    expect(badgeRouteFor('ds-bot')).toBe('/ds-bot-enhance/badge')
-  })
-
-  it('settles both count rules', () => {
-    expect(badgePolicyFor('ds-bot').pending).toBe(false)
-    expect(badgePolicyFor('dsh').pending).toBe(false)
-    expect(badgePolicyFor('ds-bot').note).toContain('green dot')
-  })
-
-  it('counts the DS Bot rows that carry an unread dot', () => {
-    const root = fakeSidebar([{ id: 'a' }, { id: 'b' }, { id: 'c' }])
-    expect(unreadSidebarRows(root)).toHaveLength(3)
-    expect(badgePolicyFor('ds-bot', { root }).select({}, statusOf({}))).toEqual(['a', 'b', 'c'])
-  })
-
-  it('counts one row once even when it carries two marks', () => {
-    const row = fakeRow('a')
-    const root = fakeSidebar([{ id: 'a', row }, { id: 'a', row }])
-    expect(unreadSidebarRows(root)).toHaveLength(1)
-  })
-
-  it('counts nothing when no row is marked or none is laid out', () => {
-    expect(unreadSidebarRows(fakeSidebar([]))).toEqual([])
-    const hidden = fakeSidebar([{ id: 'a', laidOut: false }])
-    expect(unreadSidebarRows(hidden)).toEqual([])
-  })
-
-  it('falls back to zero without a document', () => {
-    expect(unreadSidebarRows(null)).toEqual([])
   })
 
   it('counts visible unread rows and skips placeholders and subagents', () => {
@@ -407,28 +382,6 @@ describe('namespaces', () => {
     expect(DS_BOT_SELECTORS.markdownBody).not.toBe(DSH_SELECTORS.markdownBody)
   })
 })
-
-/** A sidebar row stand-in. */
-function fakeRow(id: string) {
-  return { getAttribute: (name: string) => (name === 'data-bot-id' ? id : null) }
-}
-
-/**
- * A sidebar stand-in: `dotCount` marks per entry, each attached to its row.
- * @param entries - one per dot; `row` repeats an existing row.
- */
-function fakeSidebar(entries: Array<{ id: string, row?: ReturnType<typeof fakeRow>, laidOut?: boolean }>) {
-  const dots = entries.map((entry) => ({
-    closest: () => entry.row ?? fakeRow(entry.id),
-    getClientRects: () => (entry.laidOut === false ? [] : [{}]),
-  }))
-  return { querySelectorAll: () => dots }
-}
-
-/** A status view over a plain record. */
-function statusOf(record: Record<string, { completionUnread?: boolean }>) {
-  return { get: (id: string) => record[id] }
-}
 
 
 describe('liquid glass refraction', () => {
