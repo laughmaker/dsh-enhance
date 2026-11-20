@@ -8,6 +8,7 @@
  * 3. the right-click menu on file mentions in chat messages.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import { createRoot } from 'react-dom/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-resources/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -25,7 +26,7 @@ import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
 import { installLiquidGlass } from './surfaces/ds-bot/liquid-glass.ts'
 import { installAutoLoadEarlier } from './surfaces/ds-bot/auto-load-earlier.ts'
-import { installOpenArtifactButton } from './surfaces/ds-bot/open-artifact.ts'
+import { installFooterPanels } from './surfaces/ds-bot/footer-panels.ts'
 import { installSectionStats } from './section-stats.ts'
 import { pageStorage, rememberSidebarWidth, startupSidebarWidth } from './sidebar-width.ts'
 import { installStartupGeometry, isDesktopShell } from './window-geometry.ts'
@@ -70,7 +71,11 @@ export function apply(ctx: Context): void {
   installStyles(ctx)
   if (surface === 'ds-bot') {
     ctx.inject(['layout'], scope => {
-      scope.effect(() => installOpenArtifactButton(scope, document), 'dsh-enhance: Open Artifact footer')
+      scope.effect(() => installFooterPanels(scope, document, (target, Icon) => {
+        const root = createRoot(target)
+        root.render(<Icon size={16} />)
+        return () => root.unmount()
+      }), 'dsh-enhance: DS Bot footer panels')
     })
   }
   // The whale on the empty page swims through a trail of small bubbles. The

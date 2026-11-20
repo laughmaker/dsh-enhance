@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest'
-import { installOpenArtifactButton } from '../src/client/surfaces/ds-bot/open-artifact.ts'
+import { installFooterPanels } from '../src/client/surfaces/ds-bot/footer-panels.ts'
 
 const footer = (rail = false) => `<aside class="bt-leftcol"><div class="bt-side"><div class="bt-leftcol-foot${rail ? ' bt-leftcol-foot-rail' : ''}"><button class="bt-account" aria-label="Account"></button></div></div></aside>`
 
-it('follows the registered panel and keeps one working button when the footer changes', async () => {
+it('follows the registered panels and keeps their buttons working when the footer changes', async () => {
   let registered = false
+  let skillsRegistered = false
+  const skillsIcon = () => null
+  const removeSkillsIcon = vi.fn()
+  const mountIcon = vi.fn(() => removeSkillsIcon)
   let activePanelId: string | null = null
   const listeners = new Map<string, () => void>()
   const subscribe = (name: string, listener: () => void) => {
@@ -19,9 +23,14 @@ it('follows the registered panel and keeps one working button when the footer ch
   const ctx = {
     slots: {
       entriesOfSlot: (name: string) => {
-        if (!registered) return []
-        if (name === 'main') return [{ options: { key: 'open-artifact' } }]
-        return [{ options: { id: 'open-artifact', label: () => '作品' } }]
+        if (name === 'main') return [
+          ...(registered ? [{ options: { key: 'open-artifact' } }] : []),
+          ...(skillsRegistered ? [{ options: { key: 'skills-manager' } }] : []),
+        ]
+        return [
+          ...(registered ? [{ options: { id: 'open-artifact', label: () => '作品' } }] : []),
+          ...(skillsRegistered ? [{ options: { id: 'skills-manager', label: () => '技能' }, component: skillsIcon }] : []),
+        ]
       },
       subscribe,
     },
@@ -33,11 +42,12 @@ it('follows the registered panel and keeps one working button when the footer ch
       },
     },
     locale: { subscribe: (listener: () => void) => subscribe('locale', listener) },
-  } as unknown as Parameters<typeof installOpenArtifactButton>[0]
+  } as unknown as Parameters<typeof installFooterPanels>[0]
 
   const selector = '[data-ds-bot-enhance-open-artifact]'
   const button = () => document.querySelector<HTMLButtonElement>(selector)
-  const dispose = installOpenArtifactButton(ctx, document)
+  const skillsButton = () => document.querySelector<HTMLButtonElement>('[data-ds-bot-enhance-skills-manager]')
+  const dispose = installFooterPanels(ctx, document, mountIcon)
   try {
     document.body.innerHTML = footer()
     await Promise.resolve()
@@ -50,11 +60,25 @@ it('follows the registered panel and keeps one working button when the footer ch
     entry.click()
     expect(selectPanel).toHaveBeenCalledWith('open-artifact')
     expect(entry.getAttribute('aria-current')).toBe('page')
+    expect(skillsButton()).toBeNull()
+
+    skillsRegistered = true
+    listeners.get('sidebar.panellist')?.()
+    const skills = skillsButton()!
+    expect(skills.getAttribute('aria-label')).toBe('技能')
+    expect(mountIcon).toHaveBeenCalledWith(skills.querySelector('.ds-footer-panel-icon'), skillsIcon)
+    skills.click()
+    expect(selectPanel).toHaveBeenLastCalledWith('skills-manager')
+    expect(skills.getAttribute('aria-current')).toBe('page')
+    expect(entry.hasAttribute('aria-current')).toBe(false)
 
     document.body.innerHTML = footer(true)
     await Promise.resolve()
-    expect(document.querySelector('.bt-leftcol-foot-rail')?.contains(entry)).toBe(true)
+    const railFooter = document.querySelector('.bt-leftcol-foot-rail')
+    expect(railFooter?.contains(entry)).toBe(true)
+    expect(railFooter?.contains(skills)).toBe(true)
     expect(document.querySelectorAll(selector)).toHaveLength(1)
+    expect(mountIcon).toHaveBeenCalledTimes(1)
 
     const native = document.createElement('button')
     native.setAttribute('aria-label', '作品')
@@ -68,6 +92,12 @@ it('follows the registered panel and keeps one working button when the footer ch
     registered = false
     listeners.get('main')?.()
     expect(button()).toBeNull()
+    expect(skillsButton()).toBe(skills)
+
+    skillsRegistered = false
+    listeners.get('main')?.()
+    expect(skillsButton()).toBeNull()
+    expect(removeSkillsIcon).toHaveBeenCalledOnce()
   } finally {
     dispose()
     document.body.replaceChildren()

@@ -395,6 +395,10 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
 }
 
 /* The footer's native .bt-account/.bt-you styles provide the button and disc. */
+.bt-leftcol-foot .ds-footer-panel-icon {
+  display: inline-flex;
+  line-height: 0;
+}
 .bt-leftcol-foot .ds-open-artifact-icon {
   position: relative;
   width: 16px;
