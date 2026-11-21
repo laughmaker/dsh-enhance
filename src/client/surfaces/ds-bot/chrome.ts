@@ -87,6 +87,37 @@ html[data-windows-titlebar] [class*="_addTab_"] {
   backdrop-filter: none !important;
 }
 
+/* Computer handoff renders the card and actions as siblings. Give them one
+   column so the host's flex row cannot place the actions beside the card. */
+:is(.bt-q-dock, .bt-q-inline):has(> .bt-handoff + .bt-q-foot) {
+  display: grid;
+  grid-template-areas: 'card' 'actions';
+  grid-template-columns: minmax(0, min(550px, 86%));
+  row-gap: 8px;
+}
+.bt-q-dock:has(> .bt-handoff + .bt-q-foot) {
+  grid-template-columns: minmax(0, calc(min(var(--dsh-chat-content-width, 748px), 100%) - 32px));
+  padding-bottom: 8px;
+}
+:is(.bt-q-dock, .bt-q-inline) > .bt-handoff:has(+ .bt-q-foot) {
+  grid-area: card;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+:is(.bt-q-dock, .bt-q-inline) > .bt-handoff + .bt-q-foot {
+  grid-area: actions;
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .bt-q-inline:has(> .bt-handoff + .bt-q-foot) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :is(.bt-q-dock, .bt-q-inline) > .bt-handoff + .bt-q-foot > button {
+    min-height: 44px;
+  }
+}
+
 /* Keep the user's settled 12px top offset. Absolute positioning preserves
    the host's horizontal centring as the sidebar and detail panel resize. */
 ${PILL_HEADER} {
