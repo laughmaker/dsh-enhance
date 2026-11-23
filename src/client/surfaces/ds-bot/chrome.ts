@@ -395,6 +395,11 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
   -webkit-app-region: no-drag !important;
 }
 
+/* Custom avatar images in the sidebar use the host crop without its inset ring. */
+.bt-leftcol :is(.bt-tile, .bt-row) > .bt-mark > .bt-mark[data-shape="image"] > .bt-mark-img {
+  box-shadow: none;
+}
+
 /* ---- Bot shortcut tile: let the card hold its role label ---- */
 
 /* The pinned bot card shrink-wraps to its 60px avatar, but the role chip
