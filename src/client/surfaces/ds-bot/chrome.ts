@@ -400,32 +400,41 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
   box-shadow: none;
 }
 
-/* ---- Bot shortcut tile: let the card hold its role label ---- */
-
-/* The pinned bot card shrink-wraps to its 60px avatar, but the role chip
-   ("Chief Bot Officer") is content-box with 1px 7px padding and a 92px cap, so
-   it measured ~104px and spilled ~5px past the card on each side — the chip's
-   rounded background showed outside the card's rounded bottom. Let the card
-   grow to fit the label with equal side padding, and keep an over-long label
-   wrapped inside the card instead of poking out when the sidebar is narrow.
-   The avatar and its status badge are untouched; a short label leaves a compact
-   card, and a single-line label stays on one line. Not scoped to
-   data-windows-titlebar: the overflow shows in a plain browser too. */
-.bt-leftcol .bt-tile {
-  width: auto !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  padding-left: 12px !important;
-  padding-right: 12px !important;
+/* Keep the host profile above the scrollport so it can show the native sidebar
+   material and the scrollport still clips every conversation row. */
+.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child) {
+  position: relative;
+  /* Host tile: 60px avatar, 18px name, 4px gap, 10px button padding. */
+  --ds-profile-padding-top: 6px;
+  --ds-profile-task-height: 0px;
+  --ds-profile-height: calc(107px + var(--ds-profile-padding-top) + var(--ds-profile-task-height));
 }
-.bt-leftcol .bt-tile .bt-chip {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-  text-align: center !important;
-  line-height: 1.25 !important;
-  height: auto !important;
+.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-task-pill) {
+  /* The optional task count adds an 18px pill, 4px margin and 4px gap. */
+  --ds-profile-task-height: 26px;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list:has(> .bt-tile-wrap:first-child) {
+  margin-top: var(--ds-profile-height);
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child {
+  /* The static block position is the scrollport's top. Anchor inline sizing
+     to the sidebar so the tile stays centred outside the scroll clip. */
+  position: absolute;
+  inset-inline: 0;
+  translate: 0 -100%;
+  box-sizing: border-box;
+  padding-top: var(--ds-profile-padding-top);
+  height: var(--ds-profile-height);
+  z-index: 2;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile {
+  width: 127px;
+  max-width: 100%;
+  background: transparent;
+  -webkit-app-region: no-drag !important;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-chip {
+  display: none;
 }
 
 /* The footer's native .bt-account/.bt-you styles provide the button and disc. */

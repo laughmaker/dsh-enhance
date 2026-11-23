@@ -8,16 +8,20 @@ const GROUP = '.bt-sec, .bt-sec-body, .bt-sec-body-in, .bt-sec-ungrouped'
 
 function visibleContent(list: HTMLElement, direction: number, height: number, end: number) {
   const viewport = list.getBoundingClientRect()
+  const first = list.firstElementChild
+  const pinned = !list.parentElement?.classList.contains('bt-rail') && first?.classList.contains('bt-tile-wrap') ? first : null
+  const visibleTop = pinned?.getBoundingClientRect().bottom ?? viewport.top
   const towardTop = direction < 0
   const targets: { element: Element; distance: number }[] = []
 
   // Start at the reached edge so large rosters only visit one screen of rows.
   const collect = (parent: Element) => {
     let child = towardTop ? parent.firstElementChild : parent.lastElementChild
-    while (child) {
+    if (pinned && child === pinned) child = pinned.nextElementSibling
+    while (child && child !== pinned) {
       const bounds = child.getBoundingClientRect()
-      if (towardTop ? bounds.top >= viewport.bottom : bounds.bottom <= viewport.top) break
-      if (bounds.height > 0 && bounds.bottom > viewport.top && bounds.top < viewport.bottom) {
+      if (towardTop ? bounds.top >= viewport.bottom : bounds.bottom <= visibleTop) break
+      if (bounds.height > 0 && bounds.bottom > visibleTop && bounds.top < viewport.bottom) {
         if (bounds.height > height && child.matches(GROUP)) {
           collect(child)
         } else {

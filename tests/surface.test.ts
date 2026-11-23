@@ -293,19 +293,11 @@ describe('style sets', () => {
     expect(dsBotChrome.match(/body:has\(> \.bt-menu\)/g)).toHaveLength(1)
   })
 
-  it('lets the bot tile grow to hold its role chip instead of clipping past the card', () => {
-    // The pinned bot card shrink-wraps to its 60px avatar, but the role chip is
-    // content-box and wider, so its rounded background spilled past the card.
-    // Expand the card with equal side padding and wrap an over-long label
-    // inside it. A general rule: a plain browser shows the same overflow.
-    expect(dsBotChrome).toMatch(
-      /\.bt-leftcol \.bt-tile\s*\{[^}]*width:\s*auto !important;[^}]*max-width:\s*100% !important;[^}]*padding-left:\s*12px !important;[^}]*padding-right:\s*12px !important;/
-    )
-    expect(dsBotChrome).toMatch(
-      /\.bt-leftcol \.bt-tile \.bt-chip\s*\{[^}]*max-width:\s*100% !important;[^}]*box-sizing:\s*border-box !important;[^}]*white-space:\s*normal !important;[^}]*overflow-wrap:\s*anywhere !important;/
-    )
-    // The fix must not be gated behind the desktop shell only.
-    expect(dsBotChrome).not.toMatch(/html\[data-windows-titlebar\] \.bt-leftcol \.bt-tile/)
+  it('reserves space above the list for the transparent main profile and hides its role chip', () => {
+    const profile = '.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child'
+    expect(dsBotChrome).toContain('.bt-list:has(> .bt-tile-wrap:first-child) {\n  margin-top: var(--ds-profile-height);')
+    expect(dsBotChrome).toContain(`${profile} > .bt-tile > .bt-chip {\n  display: none;`)
+    expect(dsBotChrome).toMatch(/:has\(> \.bt-list > \.bt-tile-wrap:first-child > \.bt-tile > \.bt-task-pill\) \{[^}]*--ds-profile-task-height: 26px;/)
   })
 
   it('keeps the settings subheader clickable above the panel caption band', () => {

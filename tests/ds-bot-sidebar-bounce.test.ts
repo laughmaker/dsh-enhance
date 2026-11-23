@@ -108,6 +108,24 @@ it('animates visible rows inside a tall group without growing the scroll range',
   } finally { dispose() }
 })
 
+it.each([-120, 120])('keeps the sticky tile and covered rows out of the bounce (%i)', delta => {
+  const { list, wheel, animate, tick, dispose } = setup()
+  try {
+    const tile = document.createElement('div')
+    tile.className = 'bt-tile-wrap'
+    const visible = document.createElement('button')
+    list.prepend(tile)
+    list.append(visible)
+    vi.spyOn(tile, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 240, 100))
+    vi.spyOn(visible, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 120, 240, 36))
+    list.scrollTop = delta < 0 ? 0 : 500
+    wheel(tile, delta)
+    tick()
+    expect(animate).toHaveBeenCalledOnce()
+    expect(animate.mock.results[0].value.target).toBe(visible)
+  } finally { dispose() }
+})
+
 it('follows list replacement and cancels the active animation on disposal', () => {
   const { list, setGeometry, wheel, animate, tick, dispose } = setup()
   const replacement = list.cloneNode(true) as HTMLElement
