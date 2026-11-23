@@ -367,6 +367,28 @@ describe('installAutoLoadEarlier', () => {
     expect(clicks).toBe(0)
   })
 
+  it('skips transcript lookups for sidebar wheel, scroll and pointer events', () => {
+    const { slot, button } = transcript()
+    const sidebar = document.createElement('aside')
+    document.body.append(sidebar)
+    const click = vi.fn()
+    button.addEventListener('click', click)
+    const dispose = installAutoLoadEarlier({} as never, document, t as never)
+    const query = vi.spyOn(document, 'querySelector')
+    try {
+      sidebar.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, bubbles: true }))
+      sidebar.dispatchEvent(new Event('scroll'))
+      sidebar.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      expect(query).not.toHaveBeenCalled()
+      expect(click).not.toHaveBeenCalled()
+      slot.firstElementChild?.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, bubbles: true }))
+      expect(click).toHaveBeenCalledOnce()
+    } finally {
+      query.mockRestore()
+      dispose()
+    }
+  })
+
   it('does nothing when there is no transcript on the page', () => {
     document.body.innerHTML = ''
     const dispose = installAutoLoadEarlier({} as never, document, t as never)

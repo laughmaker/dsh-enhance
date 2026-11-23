@@ -18,18 +18,24 @@ body[data-ds-dark-theme] {
   --bt-user: color-mix(in srgb, var(--bt-ink) 12%, var(--bt-main)) !important;
 }
 
-/* Shift the entire sidebar stack, including the list, with its action row.
-   The native traffic-light/sidebar switch belongs to another shell element.
-   The row sits in the 40px caption band: its buttons are 30px, starting at
-   5px so their centre (20px) lines up with the 14px traffic lights. */
-.bt-leftcol {
+/* Centre the expanded toolbar in the 40px caption band. The rail's top
+   clearance is set with its width rule below. */
+.bt-leftcol:not([data-left="rail"]) {
   padding-top: 5px !important;
 }
 .bt-leftcol .bt-side-top {
+  justify-content: flex-end;
+  flex-wrap: wrap;
   padding-top: 0 !important;
   padding-right: 0 !important;
   gap: 3px !important;
   -webkit-app-region: no-drag !important;
+}
+/* Frameless shells may put native window controls at the left. Keep the
+   toolbar out of their 88px area, including the sidebar's 12px left inset.
+   Extra actions wrap within the remaining space at compact widths. */
+html[data-windows-titlebar] .bt-leftcol .bt-side-top {
+  padding-left: max(76px, var(--bt-caption-start, 0px));
 }
 .bt-leftcol .bt-side-top button {
   -webkit-app-region: no-drag !important;
@@ -350,7 +356,7 @@ html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-
   min-width: 0 !important;
   /* With the toggle removed, keep the first avatar below native window controls.
      The live inline width still owns both the rail and its resize boundary. */
-  padding-top: max(20px, calc(var(--bt-lc-clear, 0px) + 8px)) !important;
+  padding-top: max(20px, calc(max(var(--bt-lc-clear, 0px), var(--dsh-windows-titlebar-height, 0px)) + 8px)) !important;
 }
 
 /* ---- Window drag from the sidebar background (desktop only) ---- */
@@ -361,24 +367,16 @@ html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-
    data-window-drag-recall into its no-drag carve-out; here the whole left
    column becomes that region, and every control inside it is carved back out.
    A drag region is the union of the drag boxes minus the no-drag boxes, so the
-   gaps around the pinned tile, the spacer below the session list, the section
-   spacing and the area beside the rows all drag the window, while the rows,
-   group headers, buttons, menus, inputs and the width grip keep every pointer
-   event (clicks, hover, right-click, wheel). Scoped to data-windows-titlebar so
-   a plain browser tab — which has no native window to move — is left alone.
+   empty space outside the list can still drag the window. The whole scrollport
+   receives pointer events, including gaps between rows. A single no-drag box
+   replaces the moving no-drag rectangles for each list control.
    The grip is carved out so panel-widths.ts keeps owning its resize gesture. */
 html[data-windows-titlebar] .bt-leftcol {
   -webkit-app-region: drag !important;
 }
-html[data-windows-titlebar] .bt-leftcol button,
-html[data-windows-titlebar] .bt-leftcol a,
-html[data-windows-titlebar] .bt-leftcol input,
-html[data-windows-titlebar] .bt-leftcol textarea,
-html[data-windows-titlebar] .bt-leftcol select,
-html[data-windows-titlebar] .bt-leftcol [contenteditable="true"],
-html[data-windows-titlebar] .bt-leftcol [role="menu"],
-html[data-windows-titlebar] .bt-leftcol [role="menuitem"],
-html[data-windows-titlebar] .bt-leftcol [role="menuitemcheckbox"],
+html[data-windows-titlebar] .bt-leftcol > .bt-side > .bt-list,
+html[data-windows-titlebar] .bt-leftcol :is(button, a, input, textarea, select,
+  [contenteditable="true"], [role="menu"], [role="menuitem"], [role="menuitemcheckbox"]):not(.bt-list *),
 html[data-windows-titlebar] .bt-leftcol-grip {
   -webkit-app-region: no-drag !important;
 }

@@ -142,6 +142,13 @@ describe('style sets', () => {
     expect(dsBotChrome).toContain('color-mix(in srgb, var(--bt-hover) 60%, transparent) !important')
   })
 
+  it('right-aligns the expanded actions and reserves desktop caption space', () => {
+    expect(dsBotChrome).toMatch(/\.bt-leftcol \.bt-side-top \{\s*justify-content: flex-end;\s*flex-wrap: wrap;/)
+    expect(dsBotChrome).toMatch(/html\[data-windows-titlebar\] \.bt-leftcol \.bt-side-top \{\s*padding-left: max\(76px, var\(--bt-caption-start, 0px\)\);/)
+    expect(dsBotChrome).toMatch(/\.bt-leftcol:not\(\[data-left="rail"\]\) \{\s*padding-top: 5px !important;/)
+    expect(dsBotChrome).toMatch(/\.bt-leftcol\[data-left="rail"\] \{[^}]*padding-top: max\(20px, calc\(max\(var\(--bt-lc-clear, 0px\), var\(--dsh-windows-titlebar-height, 0px\)\) \+ 8px\)\) !important;/)
+  })
+
   it('draws the rail + button as the same disc as the account and plugins buttons', () => {
     expect(dsBotChrome).toContain('.bt-leftcol-foot-rail .bt-round')
     expect(dsBotChrome).toContain('width: 36px !important')
@@ -257,20 +264,13 @@ describe('style sets', () => {
   })
 
   it('drags the desktop window from the sidebar background, controls keep no-drag', () => {
-    // The left column is the drag handle on the frameless desktop shell, so its
-    // empty gaps (around the tile, below the list, between sections) move the
-    // window. Scoped to data-windows-titlebar: a browser tab has no window.
+    // The frameless desktop keeps a drag handle outside the list viewport.
     expect(dsBotChrome).toMatch(
       /html\[data-windows-titlebar\] \.bt-leftcol\s*\{\s*-webkit-app-region:\s*drag !important;/
     )
-    // Every control inside the column is carved back out of that region so it
-    // keeps its pointer events: rows/tile/headers/actions/account are buttons,
-    // plus links, inline editors, menus and the width grip.
-    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol button,')
-    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol a,')
-    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol input,')
-    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol textarea,')
-    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol [role="menu"],')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol > .bt-side > .bt-list,')
+    expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol :is(button, a, input, textarea, select,')
+    expect(dsBotChrome).toContain('[role="menuitemcheckbox"]):not(.bt-list *)')
     expect(dsBotChrome).toContain('html[data-windows-titlebar] .bt-leftcol-grip {')
     expect(dsBotChrome).toMatch(
       /html\[data-windows-titlebar\] \.bt-leftcol-grip \{\s*-webkit-app-region:\s*no-drag !important;/

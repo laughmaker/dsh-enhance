@@ -24,6 +24,7 @@ import { installWhaleBubbles } from './whale-bubbles.ts'
 import { installSidebarFloor } from './sidebar-floor.ts'
 import { installSidebarTopRow } from './sidebar-top-row.ts'
 import { installPanelWidths } from './surfaces/ds-bot/panel-widths.ts'
+import { installSidebarBounce } from './surfaces/ds-bot/sidebar-bounce.ts'
 import { installLiquidGlass } from './surfaces/ds-bot/liquid-glass.ts'
 import { installAutoLoadEarlier } from './surfaces/ds-bot/auto-load-earlier.ts'
 import { installFooterPanels } from './surfaces/ds-bot/footer-panels.ts'
@@ -70,6 +71,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-enhance: dictionaries')
   installStyles(ctx)
   if (surface === 'ds-bot') {
+    ctx.effect(() => installSidebarBounce(document), 'dsh-enhance: DS Bot sidebar bounce')
     ctx.inject(['layout'], scope => {
       scope.effect(() => installFooterPanels(scope, document, (target, Icon) => {
         const root = createRoot(target)

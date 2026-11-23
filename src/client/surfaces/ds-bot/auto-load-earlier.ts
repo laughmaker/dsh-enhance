@@ -515,9 +515,10 @@ export function installAutoLoadEarlier(ctx: Context, root: Document, t: Translat
   }
 
   /** The reader scrolled: their gesture is the only thing that may trigger a load. */
-  const onScroll = (): void => {
+  const onScroll = (event: Event): void => {
+    if (!(event.target instanceof win.Element) || !event.target.matches(SCROLLER)) return
     const scrollerEl = scroller()
-    if (!scrollerEl) return
+    if (scrollerEl !== event.target) return
     const top = scrollerEl.scrollTop
     if (syncSession()) {
       // A different conversation is open: the old position means nothing.
@@ -554,11 +555,10 @@ export function installAutoLoadEarlier(ctx: Context, root: Document, t: Translat
    * the reader would have to scroll down and back up to get their history.
    */
   const onWheel = (event: Event): void => {
-    const scrollerEl = scroller()
-    if (!scrollerEl) return
-    const node = event.target
-    if (!(node instanceof win.Node)) return
-    if (!scrollerEl.contains(node)) return
+    const target = event.target
+    if (!(target instanceof win.Element)) return
+    const candidate = target.closest(SCROLLER)
+    if (!candidate || candidate !== scroller()) return
     if (!((event as WheelEvent).deltaY < 0)) return
     markGesture()
     if (!mayTrigger()) return
@@ -567,11 +567,10 @@ export function installAutoLoadEarlier(ctx: Context, root: Document, t: Translat
 
   /** The reader grabbed the scrollbar: a drag is a gesture of its own. */
   const onPointerDown = (event: Event): void => {
-    const scrollerEl = scroller()
-    if (!scrollerEl) return
-    const node = event.target
-    if (!(node instanceof win.Node)) return
-    if (!scrollerEl.contains(node)) return
+    const target = event.target
+    if (!(target instanceof win.Element)) return
+    const candidate = target.closest(SCROLLER)
+    if (!candidate || candidate !== scroller()) return
     gestureSeq += 1
     gestureUntil = win.performance.now() + GESTURE_WINDOW_MS
   }
