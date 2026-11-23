@@ -67,6 +67,14 @@ export function installStyles(ctx: Context): void {
   if (typeof document === 'undefined') return
   const surface = currentSurface()
   const pluginId = stylePluginId(surface)
+  // DS Bot's desktop preload omits the host's data-platform marker.
+  if (surface === 'ds-bot' && /^Mac/.test(document.defaultView?.navigator.platform ?? '')) {
+    ctx.effect(() => {
+      const root = document.documentElement
+      root.setAttribute('data-ds-enhance-mac', '')
+      return () => root.removeAttribute('data-ds-enhance-mac')
+    }, `${pluginId}: macOS chrome marker`)
+  }
   for (const [name, css] of sheetsFor(surface)) {
     ctx.effect(() => {
       const tag = document.createElement('style')

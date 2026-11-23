@@ -61,6 +61,19 @@ html[data-windows-titlebar] div[class*="_rightbarCol"] {
   border-top: 0 !important;
 }
 
+/* Use the macOS caption space for the tab strip. DS Bot's preload omits the platform
+   attribute used by the host drag styles, so use our macOS marker. */
+html[data-ds-enhance-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel:has(> .bt-ptabs[data-window-drag]) {
+  --bt-caption-band: 0px;
+}
+html[data-ds-enhance-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel > .bt-ptabs[data-window-drag] {
+  -webkit-app-region: drag;
+}
+html[data-ds-enhance-mac][data-windows-titlebar] .bt-panel > .bt-ptabs[data-window-drag] :is(button, a, [role="button"], [role="tab"]),
+html[data-ds-enhance-mac][data-windows-titlebar] .bt-panel:has(> .bt-ptabs[data-window-drag]) > .bt-panel-grip {
+  -webkit-app-region: no-drag;
+}
+
 /* With that 40px band gone the dockkit tab strip sits inside the native
    title-bar drag region. The host marks the strip itself as a window drag
    handle (data-window-drag → app-region: drag), so the strip's own padding,
@@ -316,6 +329,99 @@ ${CORNER_ROW} button,
 .bt-panel-view:has(> .bt-drawer-top) {
   padding-top: max(0px, calc(49px - var(--bt-caption-band, 0px))) !important;
 }
+
+/* In the tabbed panel the details view follows the strip. Keep its actions
+   in that flow so they never cover the tab labels or the panel close button. */
+.bt-panel:has(> .bt-ptabs) > .bt-panel-view:has(> .bt-drawer-top) {
+  padding-top: 0 !important;
+}
+.bt-panel:has(> .bt-ptabs) > .bt-panel-view > .bt-drawer-top {
+  position: relative !important;
+  inset: auto !important;
+  padding: 6px 20px 0 12px !important;
+  flex: none;
+}
+
+/* Match the dock's Files tab: a 28px chip with the shared hover and selected fills. */
+.bt-panel > .bt-ptabs {
+  --ds-tab-radius: var(--dsw-radius-sm, 6px);
+  --ds-tab-hover: var(--dsw-alias-interactive-bg-hover, var(--bt-hover));
+  --ds-tab-selected: var(--dsw-alias-markdown-tag, var(--bt-active));
+}
+.bt-panel > .bt-ptabs > .bt-ptabs-in > .bt-ptab-ind {
+  display: none;
+}
+.bt-panel > .bt-ptabs :is(.bt-ptab, .bt-ptab-wrap, .bt-ptab-new, .bt-ptab-close) {
+  height: 28px;
+  border-radius: var(--ds-tab-radius);
+}
+.bt-panel > .bt-ptabs .bt-ptab-wrap { padding-right: 4px; }
+.bt-panel > .bt-ptabs .bt-ptab-btn { padding-inline-start: 10px; }
+.bt-panel > .bt-ptabs .bt-ptab-wrap:hover,
+.bt-panel > .bt-ptabs :is(.bt-ptab-new, .bt-ptab-close):hover { background: var(--ds-tab-hover); }
+.bt-panel > .bt-ptabs .bt-ptab-wrap[data-selected],
+.bt-panel > .bt-ptabs .bt-ptab-bot[aria-selected="true"]:not(:has(+ .ds-panel-actions)) { background: var(--ds-tab-selected); }
+.bt-panel > .bt-ptabs .bt-ptab-wrap:not([data-selected]) + .bt-ptab-wrap:not([data-selected])::before {
+  content: ''; position: absolute; inset: 7px auto 7px -1px;
+  width: 1px; background: var(--bt-line); pointer-events: none;
+}
+.bt-panel > .bt-ptabs .bt-ptabs-in:has(> .ds-panel-actions) {
+  --ds-identity-width: 104px;
+  scroll-padding-left: calc(var(--ds-identity-width) + 24px);
+}
+/* The opaque surface prevents scrolled labels showing through the pinned group.
+   The separate rounded fill paints selection across the name and arrow once. */
+.bt-panel > .bt-ptabs .bt-ptabs-in > .bt-ptab-bot:has(+ .ds-panel-actions) {
+  width: var(--ds-identity-width); box-sizing: border-box;
+  background: var(--bt-main); box-shadow: 22px 0 var(--bt-main);
+  border-radius: 0; z-index: 3;
+}
+.bt-ptab-bot:has(+ .ds-panel-actions)::before {
+  content: ''; position: absolute; inset: 0 -22px 0 0;
+  border-radius: var(--ds-tab-radius); z-index: -1; pointer-events: none;
+}
+.bt-ptab-bot:is(:hover, :has(+ .ds-panel-actions:hover), :has(+ .ds-panel-actions[aria-expanded="true"]))::before {
+  background: var(--ds-tab-hover);
+}
+.bt-ptab-bot[aria-selected="true"]:has(+ .ds-panel-actions)::before { background: var(--ds-tab-selected); }
+.bt-ptab-bot:has(+ .ds-panel-actions):not(:has(.bt-ptab-name))::after {
+  content: attr(title); overflow: hidden; text-overflow: ellipsis;
+}
+.bt-panel > .bt-ptabs .ds-panel-actions {
+  position: sticky; left: calc(var(--ds-identity-width) + 2px); z-index: 4; flex: none;
+  width: 20px; height: 28px; border: 0; border-radius: var(--ds-tab-radius); padding: 0;
+  background: transparent; color: var(--bt-ink-2); cursor: pointer;
+  display: inline-grid; place-items: center;
+}
+.bt-panel > .bt-ptabs .ds-panel-actions::before {
+  content: '';
+  width: 10px;
+  height: 7px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.bt-panel > .bt-ptabs > .bt-pmenu > .bt-ptab-new { color: var(--bt-ink-2); }
+.bt-panel > .bt-ptabs > .bt-pmenu > .bt-ptab-new:hover { color: var(--bt-ink); }
+.bt-panel > .bt-ptabs > .bt-pmenu > .bt-ptab-new > svg path { stroke-width: 3.2px; }
+.ds-panel-actions:hover, .ds-panel-actions[aria-expanded="true"] { color: var(--bt-ink); }
+.bt-panel > .bt-ptabs :is(.ds-panel-actions, .bt-ptab-new, .bt-ptab-close):focus-visible {
+  outline: 2px solid var(--bt-accent); outline-offset: -2px;
+}
+.bt-panel:has(> .bt-ptabs .ds-panel-actions) > .bt-panel-view > .bt-drawer-top:not(:popover-open) { display: none !important; }
+.bt-panel:has(> .bt-ptabs .ds-panel-actions) > .bt-panel-view > .bt-drawer-top:popover-open {
+  position: fixed !important; inset: var(--ds-actions-y) auto auto var(--ds-actions-x) !important;
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  box-sizing: border-box; width: 192px; overflow: visible; margin: 0 !important; padding: 5px !important;
+  border: .5px solid var(--bt-line); border-radius: 12px; color: var(--bt-ink);
+  background: var(--bt-main); box-shadow: 0 8px 24px #0003; animation: none;
+}
+.bt-panel:has(> .bt-ptabs .ds-panel-actions) > .bt-panel-view > .bt-drawer-top:popover-open .bt-round {
+  display: flex; justify-content: flex-start; gap: 8px; box-sizing: border-box;
+  width: 100%; padding: 0 9px; border-radius: 7px; white-space: nowrap;
+}
+.bt-drawer-top:popover-open .bt-round::after { content: attr(aria-label); font: 13px system-ui; }
+.bt-drawer-top:popover-open .bt-pmenu { display: block; }
+.bt-drawer-top:popover-open .bt-pmenu-pop { position: static; margin: 3px 0; min-width: 0; }
 
 /* The settings view uses an in-flow subheader instead of .bt-drawer-top.
    Without a tab strip, replace the inherited 40px band with the 20px inset

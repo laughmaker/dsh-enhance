@@ -249,6 +249,15 @@ describe('style sets', () => {
     expect(dsBotChrome).not.toContain('var(--bt-panel-w, 320px)')
   })
 
+  it('keeps details controls below the tab strip when both are present', () => {
+    expect(dsBotChrome).toContain('.bt-panel:has(> .bt-ptabs) > .bt-panel-view > .bt-drawer-top {\n  position: relative !important;\n  inset: auto !important;')
+    expect(dsBotChrome).toContain('.bt-panel:has(> .bt-ptabs) > .bt-panel-view:has(> .bt-drawer-top) {\n  padding-top: 0 !important;')
+  })
+
+  it('removes the extra caption band only from the macOS tabbed panel', () => {
+    expect(dsBotChrome).toContain('html[data-ds-enhance-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel:has(> .bt-ptabs[data-window-drag]) {\n  --bt-caption-band: 0px;')
+  })
+
   it('makes the dockkit tab strip a no-drag island in the title-bar band', () => {
     // The 40px caption border on the right column is removed...
     expect(dsBotChrome).toContain('html[data-windows-titlebar] div[class*="_rightbarCol"]')
