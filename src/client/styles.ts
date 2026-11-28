@@ -66,6 +66,15 @@ export function sheetsFor(surface: Surface): readonly (readonly [string, string]
 export function installStyles(ctx: Context): void {
   if (typeof document === 'undefined') return
   const surface = currentSurface()
+  installStyleSheets(ctx, document, surface, sheetsFor(surface))
+}
+
+export function installStyleSheets(
+  ctx: { effect: (mount: () => () => void, name: string) => unknown },
+  document: Document,
+  surface: Surface,
+  sheets: readonly (readonly [string, string])[],
+): void {
   const pluginId = stylePluginId(surface)
   // DS Bot's desktop preload omits the host's data-platform marker.
   if (surface === 'ds-bot' && /^Mac/.test(document.defaultView?.navigator.platform ?? '')) {
@@ -75,7 +84,7 @@ export function installStyles(ctx: Context): void {
       return () => root.removeAttribute('data-ds-enhance-mac')
     }, `${pluginId}: macOS chrome marker`)
   }
-  for (const [name, css] of sheetsFor(surface)) {
+  for (const [name, css] of sheets) {
     ctx.effect(() => {
       const tag = document.createElement('style')
       tag.dataset.plugin = pluginId

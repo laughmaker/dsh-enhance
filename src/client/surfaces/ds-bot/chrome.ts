@@ -7,7 +7,234 @@
 const CORNER_ROW = ':is(.bt-pane, .bt-panel) .bt-drawer-top'
 const PILL_HEADER = 'header[class*="_header"]:has(.bt-head)'
 
-export const css = `
+const NATIVE_PILL_HEADER = '.dsb-head:has(.bt-head)'
+
+const sidebarProfileCss = `
+/* Custom avatar images in the sidebar use the host crop without its inset ring. */
+.bt-leftcol :is(.bt-tile, .bt-row) > .bt-mark > .bt-mark[data-shape="image"] > .bt-mark-img {
+  box-shadow: none;
+}
+
+/* Keep the host profile above the scrollport so it can show the native sidebar
+   material and the scrollport still clips every conversation row. */
+.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child) {
+  position: relative;
+  /* Host tile: 60px avatar, 18px name, 4px gap, 10px button padding. */
+  --ds-profile-padding-top: 6px;
+  --ds-profile-task-height: 0px;
+  --ds-profile-height: calc(107px + var(--ds-profile-padding-top) + var(--ds-profile-task-height));
+}
+.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-task-pill) {
+  /* The optional task count adds an 18px pill, 4px margin and 4px gap. */
+  --ds-profile-task-height: 26px;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list:has(> .bt-tile-wrap:first-child) {
+  margin-top: var(--ds-profile-height);
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child {
+  /* The static block position is the scrollport's top. Anchor inline sizing
+     to the sidebar so the tile stays centred outside the scroll clip. */
+  position: absolute;
+  inset-inline: 0;
+  translate: 0 -100%;
+  box-sizing: border-box;
+  padding-top: var(--ds-profile-padding-top);
+  height: var(--ds-profile-height);
+  z-index: 2;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile {
+  width: 127px;
+  max-width: 100%;
+  background: transparent;
+  -webkit-app-region: no-drag !important;
+}
+.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-chip {
+  display: none;
+}
+`
+
+function titlePillCss(pillHeader: string, useDisplacement = true): string {
+  return `
+/* Keep the pill fully clickable: the header/head pass clicks through except on
+   the pill itself, and the pill is never a window-drag handle. */
+${pillHeader} .bt-head {
+  height: 50px !important;
+  pointer-events: none !important;
+}
+${pillHeader} .bt-pill,
+${pillHeader} .bt-pill * {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+}
+
+/* Liquid glass on the session-title pill, ported from
+   lucasromerodb/liquid-glass-effect-macos (the source behind the user's
+   CodeSandbox reference nn5q2y; that repo ships no LICENSE and is used as an
+   effect reference only). The reference layers one clipped shape as:
+     effect layer  - backdrop-filter: blur(3px) AND filter: url(#glass-distortion)
+                     on the SAME element, so the backdrop is softened first and
+                     bent afterwards by the turbulence displacement map;
+     tint layer    - a flat white 25% film over the bend;
+     shine layer   - two inset white shadows that draw the lit lip;
+     text layer    - the content, above every layer.
+   Here the effect layer is ::before, the tint and the shine share ::after, and
+   the pill's own box clips both to the capsule. The pill carries no border: the
+   reference has none, and its only outline is the shine. The soft drop shadow
+   is kept light. Padding grows by 5px on each side; height grows accordingly
+   so the avatar and title keep the same space inside the capsule. */
+${pillHeader} .bt-pill {
+  position: relative !important;
+  height: 50px !important;
+  padding: 12.5px 18.5px 12.5px 12.5px !important;
+  /* Own the silhouette instead of inheriting a host/theme corner radius. */
+  border-radius: 9999px !important;
+  corner-shape: round !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  --dsh-lg-tint: rgba(255, 255, 255, .25);
+  /* No border: the reference draws the edge with the shine layer alone. */
+  border: none !important;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .10),
+    0 0 8px rgba(0, 0, 0, .04) !important;
+}
+
+/* Dark glass takes a much lighter white tint: the backdrop is already dark, and
+   the reference's 25% film over it turns the pill into a grey card. */
+body[data-ds-dark-theme] ${pillHeader} .bt-pill {
+  --dsh-lg-tint: rgba(255, 255, 255, .08);
+  box-shadow:
+    0 3px 3px rgba(0, 0, 0, .34),
+    0 0 10px rgba(0, 0, 0, .18) !important;
+}
+
+/* The glass itself: the softening pass and the bend ride the same element, as
+   in the reference. The bend uses the plain filter property because Chromium
+   drops a url() from backdrop-filter; the unset variable keeps this at none, so
+   the frosted fallback still works. */
+${pillHeader} .bt-pill::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  border-radius: inherit !important;
+  corner-shape: round !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  -webkit-backdrop-filter: ${useDisplacement ? 'var(--dsh-lg-backdrop, blur(3px))' : 'blur(3px)'} !important;
+  backdrop-filter: ${useDisplacement ? 'var(--dsh-lg-backdrop, blur(3px))' : 'blur(3px)'} !important;
+  ${useDisplacement ? `-webkit-filter: var(--dsh-lg-filter, none) !important;
+  filter: var(--dsh-lg-filter, none) !important;` : 'filter: none !important;'}
+  pointer-events: none !important;
+}
+
+/* The body of the glass and its lip: the reference's flat white film plus its
+   two inset shines, one catching the light on the top-left curve and one
+   holding the bottom-right edge. That pair is what makes the outline read as
+   a thin bright lip at 1x; a single top highlight only brightens the top. */
+${pillHeader} .bt-pill::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  border-radius: inherit !important;
+  corner-shape: round !important;
+  background: var(--dsh-lg-tint) !important;
+  box-shadow:
+    inset .5px .5px .75px 0 rgba(255, 255, 255, .45),
+    inset -.5px -.5px .75px 0 rgba(255, 255, 255, .28) !important;
+  pointer-events: none !important;
+}
+
+/* Avatar, name and back arrow sit above both layers so the text stays crisp
+   instead of getting washed by the tint. */
+${pillHeader} .bt-pill > * {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+/* A single gentle squash-and-stretch on entry, then settle at the original
+   size. The outer header stays still, preserving centring and hit geometry. */
+@keyframes dsh-pill-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.045, .96); }
+  65% { transform: scale(.985, 1.025); }
+  100% { transform: scale(1); }
+}
+${pillHeader} .bt-pill:hover {
+  --dsh-lg-tint: rgba(255, 255, 255, .32);
+  animation: dsh-pill-pop 440ms cubic-bezier(.22, .61, .36, 1) both !important;
+}
+body[data-ds-dark-theme] ${pillHeader} .bt-pill:hover {
+  --dsh-lg-tint: rgba(255, 255, 255, .12);
+}
+${pillHeader} .bt-pill:active {
+  animation: none !important;
+  transform: scale(.97) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ${pillHeader} .bt-pill:hover,
+  ${pillHeader} .bt-pill:active {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+`
+}
+
+export const css = chromeCss()
+export const nativeCss = chromeCss(NATIVE_PILL_HEADER, false)
+
+export function appearanceChromeCss(): string {
+  return `
+${sidebarProfileCss}
+/* Keep the expanded Bot tools at the right and give them room to wrap. */
+.bt-leftcol:is([data-left="open"], [data-left="drawer"]) > .bt-side > .bt-side-top {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding-bottom: 0;
+}
+.bt-leftcol > .bt-side > .bt-side-top > .bt-brand {
+  display: none;
+}
+
+/* The independent macOS caption also holds a 28px sidebar toggle at x=88.
+   Leave 4px after it, relative to the sidebar's 12px left padding. */
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-leftcol:is([data-left="open"], [data-left="drawer"]) {
+  padding-top: max(0px, calc((var(--dsh-windows-titlebar-height, 40px) - 30px) / 2));
+}
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-leftcol:is([data-left="open"], [data-left="drawer"]) > .bt-side > .bt-side-top {
+  padding-top: 0;
+  padding-inline-start: calc(var(--bt-caption-start, 76px) + 32px);
+}
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-leftcol > .bt-side > .bt-side-top button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Four-button details view: place the row at the lights' top edge in normal
+   flow. Leave the caption drag strip, right inset and tabbed panel intact. */
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel:not(:has(> .bt-ptabs)):has(> .bt-panel-view > .bt-drawer-top[data-window-drag]) {
+  padding-top: max(0px, calc((var(--dsh-windows-titlebar-height, 40px) - 14px) / 2 - var(--dsh-frame-chrome-top, 0px)));
+}
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel > .bt-panel-view > .bt-drawer-top[data-window-drag] {
+  position: relative;
+  padding-top: 0;
+}
+html[data-mac][data-windows-titlebar]:not([data-fullscreen]) .bt-panel > .bt-panel-view > .bt-drawer-top[data-window-drag] :is(button, .bt-pmenu-pop) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+${titlePillCss(NATIVE_PILL_HEADER, false)}
+`
+}
+
+function chromeCss(pillHeader = PILL_HEADER, legacyChrome = true): string {
+  return `
 /* Keep user messages on the current theme's surface instead of an inverted
    black/white slab. Theme inks retain readable text and adapt to custom themes. */
 body {
@@ -34,7 +261,7 @@ body[data-ds-dark-theme] {
 /* Frameless shells may put native window controls at the left. Keep the
    toolbar out of their 88px area, including the sidebar's 12px left inset.
    Extra actions wrap within the remaining space at compact widths. */
-html[data-windows-titlebar] .bt-leftcol .bt-side-top {
+${legacyChrome ? 'html[data-windows-titlebar]' : 'html[data-windows-titlebar][data-ds-enhance-mac]:not([data-fullscreen])'} .bt-leftcol .bt-side-top {
   padding-left: max(76px, var(--bt-caption-start, 0px));
 }
 .bt-leftcol .bt-side-top button {
@@ -137,9 +364,9 @@ html[data-windows-titlebar] [class*="_addTab_"] {
   }
 }
 
-/* Keep the user's settled 12px top offset. Absolute positioning preserves
+${legacyChrome ? `/* Keep the user's settled 12px top offset. Absolute positioning preserves
    the host's horizontal centring as the sidebar and detail panel resize. */
-${PILL_HEADER} {
+${pillHeader} {
   top: 12px !important;
   padding: 0 !important;
 }
@@ -147,139 +374,16 @@ ${PILL_HEADER} {
 /* The host's fading header backdrop must not paint a horizontal light band,
    and its 60px-tall ::before band also intercepted clicks over the pill's top
    half (only the bottom sliver stayed hittable). Remove it entirely. */
-${PILL_HEADER}::before {
+${pillHeader}::before {
   content: none !important;
   background: none !important;
   height: 0 !important;
   pointer-events: none !important;
 }
 
-/* Keep the pill fully clickable: the header/head pass clicks through except on
-   the pill itself, and the pill is never a window-drag handle. */
-${PILL_HEADER} .bt-head {
-  height: 50px !important;
-  pointer-events: none !important;
-}
-${PILL_HEADER} .bt-pill,
-${PILL_HEADER} .bt-pill * {
-  pointer-events: auto !important;
-  -webkit-app-region: no-drag !important;
-}
+` : ''}
 
-/* Liquid glass on the session-title pill, ported from
-   lucasromerodb/liquid-glass-effect-macos (the source behind the user's
-   CodeSandbox reference nn5q2y; that repo ships no LICENSE and is used as an
-   effect reference only). The reference layers one clipped shape as:
-     effect layer  - backdrop-filter: blur(3px) AND filter: url(#glass-distortion)
-                     on the SAME element, so the backdrop is softened first and
-                     bent afterwards by the turbulence displacement map;
-     tint layer    - a flat white 25% film over the bend;
-     shine layer   - two inset white shadows that draw the lit lip;
-     text layer    - the content, above every layer.
-   Here the effect layer is ::before, the tint and the shine share ::after, and
-   the pill's own box clips both to the capsule. The pill carries no border: the
-   reference has none, and its only outline is the shine. The soft drop shadow
-   is kept light. Padding grows by 5px on each side; height grows accordingly
-   so the avatar and title keep the same space inside the capsule. */
-${PILL_HEADER} .bt-pill {
-  position: relative !important;
-  height: 50px !important;
-  padding: 12.5px 18.5px 12.5px 12.5px !important;
-  /* Own the silhouette instead of inheriting a host/theme corner radius. */
-  border-radius: 9999px !important;
-  corner-shape: round !important;
-  overflow: hidden !important;
-  background: transparent !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  --dsh-lg-tint: rgba(255, 255, 255, .25);
-  /* No border: the reference draws the edge with the shine layer alone. */
-  border: none !important;
-  box-shadow:
-    0 2px 5px rgba(0, 0, 0, .10),
-    0 0 8px rgba(0, 0, 0, .04) !important;
-}
-
-/* Dark glass takes a much lighter white tint: the backdrop is already dark, and
-   the reference's 25% film over it turns the pill into a grey card. */
-body[data-ds-dark-theme] ${PILL_HEADER} .bt-pill {
-  --dsh-lg-tint: rgba(255, 255, 255, .08);
-  box-shadow:
-    0 3px 3px rgba(0, 0, 0, .34),
-    0 0 10px rgba(0, 0, 0, .18) !important;
-}
-
-/* The glass itself: the softening pass and the bend ride the same element, as
-   in the reference. The bend uses the plain filter property because Chromium
-   drops a url() from backdrop-filter; the unset variable keeps this at none, so
-   the frosted fallback still works. */
-${PILL_HEADER} .bt-pill::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  border-radius: inherit !important;
-  corner-shape: round !important;
-  overflow: hidden !important;
-  isolation: isolate !important;
-  -webkit-backdrop-filter: var(--dsh-lg-backdrop, blur(3px)) !important;
-  backdrop-filter: var(--dsh-lg-backdrop, blur(3px)) !important;
-  -webkit-filter: var(--dsh-lg-filter, none) !important;
-  filter: var(--dsh-lg-filter, none) !important;
-  pointer-events: none !important;
-}
-
-/* The body of the glass and its lip: the reference's flat white film plus its
-   two inset shines, one catching the light on the top-left curve and one
-   holding the bottom-right edge. That pair is what makes the outline read as
-   a thin bright lip at 1x; a single top highlight only brightens the top. */
-${PILL_HEADER} .bt-pill::after {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 2 !important;
-  border-radius: inherit !important;
-  corner-shape: round !important;
-  background: var(--dsh-lg-tint) !important;
-  box-shadow:
-    inset .5px .5px .75px 0 rgba(255, 255, 255, .45),
-    inset -.5px -.5px .75px 0 rgba(255, 255, 255, .28) !important;
-  pointer-events: none !important;
-}
-
-/* Avatar, name and back arrow sit above both layers so the text stays crisp
-   instead of getting washed by the tint. */
-${PILL_HEADER} .bt-pill > * {
-  position: relative !important;
-  z-index: 3 !important;
-}
-
-/* A single gentle squash-and-stretch on entry, then settle at the original
-   size. The outer header stays still, preserving centring and hit geometry. */
-@keyframes dsh-pill-pop {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.045, .96); }
-  65% { transform: scale(.985, 1.025); }
-  100% { transform: scale(1); }
-}
-${PILL_HEADER} .bt-pill:hover {
-  --dsh-lg-tint: rgba(255, 255, 255, .32);
-  animation: dsh-pill-pop 440ms cubic-bezier(.22, .61, .36, 1) both !important;
-}
-body[data-ds-dark-theme] ${PILL_HEADER} .bt-pill:hover {
-  --dsh-lg-tint: rgba(255, 255, 255, .12);
-}
-${PILL_HEADER} .bt-pill:active {
-  animation: none !important;
-  transform: scale(.97) !important;
-}
-@media (prefers-reduced-motion: reduce) {
-  ${PILL_HEADER} .bt-pill:hover,
-  ${PILL_HEADER} .bt-pill:active {
-    animation: none !important;
-    transform: none !important;
-  }
-}
+${titlePillCss(pillHeader)}
 
 /* A group session with an active goal renders the same .bt-pill inside a
    .bt-island card (the pill row plus a goal bar below it). The host squares that
@@ -292,14 +396,14 @@ ${PILL_HEADER} .bt-pill:active {
    the collapsed (goal bar) and open (goal panel) states. Scoped to the session
    header island; the plain header pill (no island ancestor) is untouched, and
    the transition the host declares on the island keeps animating the change. */
-${PILL_HEADER} .bt-island {
+${pillHeader} .bt-island {
   border-radius: 25px !important;
   corner-shape: round !important;
 }
-${PILL_HEADER} .bt-island:not([data-open]) .bt-goal-bar {
+${pillHeader} .bt-island:not([data-open]) .bt-goal-bar {
   border-radius: 0 0 25px 25px !important;
 }
-${PILL_HEADER} .bt-island .bt-goal-panel {
+${pillHeader} .bt-island .bt-goal-panel {
   border-radius: 0 0 25px 25px !important;
 }
 
@@ -453,7 +557,7 @@ html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-
   -webkit-app-region: no-drag !important;
 }
 
-/* Only expanded columns have an expanded minimum; the width module owns the
+${legacyChrome ? `/* Only expanded columns have an expanded minimum; the width module owns the
    actual drag. This keeps the static floor below the host's 264px. */
 .bt-leftcol:is([data-left="open"], [data-left="drawer"]) {
   min-width: 220px !important;
@@ -464,6 +568,7 @@ html[data-windows-titlebar] .bt-panel:has(> .bt-panel-view > .bt-subhead) > .bt-
      The live inline width still owns both the rail and its resize boundary. */
   padding-top: max(20px, calc(max(var(--bt-lc-clear, 0px), var(--dsh-windows-titlebar-height, 0px)) + 8px)) !important;
 }
+` : ''}
 
 /* ---- Window drag from the sidebar background (desktop only) ---- */
 
@@ -501,47 +606,7 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
   -webkit-app-region: no-drag !important;
 }
 
-/* Custom avatar images in the sidebar use the host crop without its inset ring. */
-.bt-leftcol :is(.bt-tile, .bt-row) > .bt-mark > .bt-mark[data-shape="image"] > .bt-mark-img {
-  box-shadow: none;
-}
-
-/* Keep the host profile above the scrollport so it can show the native sidebar
-   material and the scrollport still clips every conversation row. */
-.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child) {
-  position: relative;
-  /* Host tile: 60px avatar, 18px name, 4px gap, 10px button padding. */
-  --ds-profile-padding-top: 6px;
-  --ds-profile-task-height: 0px;
-  --ds-profile-height: calc(107px + var(--ds-profile-padding-top) + var(--ds-profile-task-height));
-}
-.bt-leftcol > .bt-side:not(.bt-rail):has(> .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-task-pill) {
-  /* The optional task count adds an 18px pill, 4px margin and 4px gap. */
-  --ds-profile-task-height: 26px;
-}
-.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list:has(> .bt-tile-wrap:first-child) {
-  margin-top: var(--ds-profile-height);
-}
-.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child {
-  /* The static block position is the scrollport's top. Anchor inline sizing
-     to the sidebar so the tile stays centred outside the scroll clip. */
-  position: absolute;
-  inset-inline: 0;
-  translate: 0 -100%;
-  box-sizing: border-box;
-  padding-top: var(--ds-profile-padding-top);
-  height: var(--ds-profile-height);
-  z-index: 2;
-}
-.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile {
-  width: 127px;
-  max-width: 100%;
-  background: transparent;
-  -webkit-app-region: no-drag !important;
-}
-.bt-leftcol > .bt-side:not(.bt-rail) > .bt-list > .bt-tile-wrap:first-child > .bt-tile > .bt-chip {
-  display: none;
-}
+${sidebarProfileCss}
 
 /* The footer's native .bt-account/.bt-you styles provide the button and disc. */
 .bt-leftcol-foot .ds-footer-panel-icon {
@@ -628,7 +693,7 @@ html[data-windows-titlebar] body:has(> .bt-menu) .bt-leftcol {
   color: var(--bt-ink) !important;
 }
 
-/* Sidebar visibility is controlled by the host shortcut and the existing grip.
+${legacyChrome ? `/* Sidebar visibility is controlled by the host shortcut and the existing grip.
    Hide the Bot controls and the shell fallback, which is exposed after the Bot
    column unmounts. Otherwise hiding the sidebar reveals another open button. */
 .bt-title-toggle,
@@ -637,6 +702,8 @@ button[data-sidebar-toggle],
 button[data-sidebar-opener] {
   display: none !important;
 }
+
+` : ''}
 
 .bt-leftcol,
 .bt-leftcol > :first-child {
@@ -665,3 +732,4 @@ body[data-ds-dark-theme] .bt-account-menu {
   background: color-mix(in srgb, var(--bt-main) 90%, transparent) !important;
 }
 `
+}

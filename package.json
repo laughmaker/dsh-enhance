@@ -27,11 +27,17 @@
     "./client": {
       "default": "./lib/client.js"
     },
+    "./ds-bot": {
+      "default": "./lib/ds-bot.js"
+    },
+    "./ds-bot-appearance.css": "./lib/ds-bot-appearance.css",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/ds-bot.js",
+    "lib/ds-bot-appearance.css",
     "cordis.patch.yml",
     "README.md"
   ],

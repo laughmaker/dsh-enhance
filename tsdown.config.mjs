@@ -8,6 +8,8 @@
  * else is inlined, because a feature plugin may not request non-baseline
  * module-table rows.
  */
+import { buildAppearanceStylesheet } from './src/client/surfaces/ds-bot/appearance.ts'
+
 const EXTERNALS = [
   'react',
   'react/jsx-runtime',
@@ -54,5 +56,22 @@ export default [
       intro: 'var module = { exports: {} }; var exports = module.exports;',
       footer: 'return module.exports; } });',
     },
+  },
+  {
+    name: 'dsh-enhance (DS Bot UI)',
+    entry: ['src/client/ds-bot.ts'],
+    outDir: 'lib',
+    format: ['esm'],
+    platform: 'browser',
+    target: 'es2022',
+    dts: false,
+    clean: false,
+    outputOptions: { entryFileNames: 'ds-bot.js' },
+    plugins: [{
+      name: 'ds-bot-appearance-css',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'ds-bot-appearance.css', source: buildAppearanceStylesheet() })
+      },
+    }],
   },
 ]
